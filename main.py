@@ -96,8 +96,8 @@ def make_thumbnail(image_bytes: bytes, max_size: int = 400) -> bytes:
 
 
 # --- Baidu OCR Service ---
-BAIDU_API_KEY = os.environ.get("BAIDU_OCR_API_KEY", "")
-BAIDU_SECRET_KEY = os.environ.get("BAIDU_OCR_SECRET_KEY", "")
+BAIDU_API_KEY = os.environ.get("BAIDU_API_KEY", "")
+BAIDU_SECRET_KEY = os.environ.get("BAIDU_SECRET_KEY", "")
 _baidu_token_cache = {"token": "", "expires": 0}
 
 
@@ -368,7 +368,7 @@ async def delete_record(record_id: str):
 async def reocr_record(record_id: str):
     """Re-run OCR on an existing record."""
     if not BAIDU_API_KEY or not BAIDU_SECRET_KEY:
-        raise HTTPException(400, "OCR未配置，请设置BAIDU_OCR_API_KEY和BAIDU_OCR_SECRET_KEY环境变量")
+        raise HTTPException(400, "OCR未配置，请设置BAIDU_API_KEY和BAIDU_SECRET_KEY环境变量")
     db = SessionLocal()
     try:
         r = db.query(MedicalRecord).filter(MedicalRecord.id == record_id).first()
