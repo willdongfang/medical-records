@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>病历本</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --primary: #2563eb; --primary-dark: #1d4ed8; --bg: #f0f2f5;
+  --card-bg: #fff; --text: #1a1a2e; --text-secondary: #64748b;
+  --border: #e2e8f0; --danger: #ef4444; --radius: 12px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg); color: var(--text); min-height: 100vh;
+  padding-top: calc(60px + var(--safe-top)); padding-bottom: var(--safe-bottom); }
+header { position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  background: var(--primary); color: #fff; display: flex; align-items: center;
+  justify-content: space-between; padding: 0 16px;
+  height: calc(60px + var(--safe-top)); padding-top: var(--safe-top); }
+header h1 { font-size: 18px; font-weight: 600; }
+#btnUpload { background: rgba(255,255,255,0.2); border: none; color: #fff;
+  padding: 8px 16px; border-radius: 20px; font-size: 14px; cursor: pointer;
+  font-weight: 500; }
+#btnUpload:active { background: rgba(255,255,255,0.35); }
+
+#categoryNav { display: flex; gap: 8px; padding: 12px 16px; overflow-x: auto;
+  -webkit-overflow-scrolling: touch; white-space: nowrap; background: var(--card-bg);
+  border-bottom: 1px solid var(--border); }
+#categoryNav::-webkit-scrollbar { display: none; }
+.cat-btn { border: 1px solid var(--border); background: var(--card-bg); color: var(--text-secondary);
+  padding: 6px 14px; border-radius: 20px; font-size: 13px; cursor: pointer;
+  flex-shrink: 0; transition: all .2s; }
+.cat-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+main { padding: 12px; }
+.record-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.record-card { background: var(--card-bg); border-radius: var(--radius); overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08); cursor: pointer; transition: transform .15s; }
+.record-card:active { transform: scale(0.97); }
+.record-card img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; background: #f1f5f9; }
+.record-info { padding: 8px 10px; }
+.record-info .title { font-size: 13px; font-weight: 500; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; }
+.record-info .meta { font-size: 11px; color: var(--text-secondary); margin-top: 3px;
+  display: flex; justify-content: space-between; }
+.cat-tag { background: #eff6ff; color: var(--primary); padding: 1px 6px;
+  border-radius: 4px; font-size: 10px; }
+
+.empty-state { text-align: center; padding: 60px 20px; color: var(--text-secondary); }
+.empty-icon { font-size: 48px; margin-bottom: 12px; }
+.empty-state .sub { font-size: 13px; margin-top: 6px; }
+
+/* Modal */
+.modal { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.5);
+  display: flex; align-items: flex-end; justify-content: center; }
+.modal-content { background: var(--card-bg); border-radius: 16px 16px 0 0;
+  width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto;
+  padding: 20px 16px calc(20px + var(--safe-bottom)); }
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.modal-header h2 { font-size: 17px; }
+.close-btn { background: none; border: none; font-size: 28px; color: var(--text-secondary);
+  cursor: pointer; line-height: 1; padding: 0 4px; }
+.close-btn.light { color: rgba(255,255,255,0.8); font-size: 32px; }
+
+.form-group { margin-bottom: 14px; }
+.form-group label { display: block; font-size: 13px; font-weight: 500;
+  margin-bottom: 6px; color: var(--text-secondary); }
+.required { color: var(--danger); }
+.form-group input, .form-group select, .form-group textarea {
+  width: 100%; padding: 10px 12px; border: 1px solid var(--border);
+  border-radius: 8px; font-size: 15px; background: #fafbfc; }
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+  outline: none; border-color: var(--primary); background: #fff; }
+
+.image-upload-area { border: 2px dashed var(--border); border-radius: var(--radius);
+  text-align: center; padding: 24px; cursor: pointer; background: #fafbfc; }
+.image-upload-area:active { background: #f1f5f9; }
+.upload-icon { font-size: 36px; margin-bottom: 6px; }
+.image-upload-area p { font-size: 13px; color: var(--text-secondary); }
+#imagePreview { max-width: 100%; max-height: 200px; border-radius: 8px; }
+
+.submit-btn { width: 100%; padding: 13px; background: var(--primary); color: #fff;
+  border: none; border-radius: 10px; font-size: 16px; font-weight: 600;
+  cursor: pointer; margin-top: 6px; }
+.submit-btn:active { background: var(--primary-dark); }
+.submit-btn:disabled { background: #94a3b8; cursor: not-allowed; }
+
+/* Viewer */
+#viewerModal { flex-direction: column; background: rgba(0,0,0,0.92); align-items: center; }
+.viewer-header { width: 100%; padding: 12px 16px; padding-top: calc(12px + var(--safe-top));
+  display: flex; justify-content: space-between; align-items: center;
+  color: #fff; font-size: 15px; font-weight: 500; flex-shrink: 0; }
+.viewer-body { flex: 1; display: flex; align-items: center; justify-content: center;
+  overflow: auto; width: 100%; padding: 8px; }
+#viewerImage { max-width: 100%; max-height: 100%; object-fit: contain; }
+.viewer-footer { width: 100%; padding: 12px 16px; padding-bottom: calc(12px + var(--safe-bottom));
+  display: flex; justify-content: space-between; align-items: center;
+  color: rgba(255,255,255,0.7); font-size: 12px; flex-shrink: 0; }
+.delete-btn { background: var(--danger); color: #fff; border: none; padding: 8px 18px;
+  border-radius: 8px; font-size: 13px; cursor: pointer; }
+
+.loading-overlay { position: fixed; inset: 0; z-index: 999; background: rgba(255,255,255,0.85);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.spinner { width: 36px; height: 36px; border: 3px solid var(--border);
+  border-top-color: var(--primary); border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-overlay p { margin-top: 10px; font-size: 14px; color: var(--text-secondary); }
+
+@media(min-width: 500px) {
+  .record-grid { grid-template-columns: repeat(3, 1fr); }
+  .modal-content { border-radius: 16px; margin-bottom: 20px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header id="appHeader">
+  <h1>病历本</h1>
+  <button id="btnUpload" onclick="showUploadModal()">+ 上传</button>
+</header>
+
+<!-- Category Filter -->
+<nav id="categoryNav">
+  <button class="cat-btn active" data-cat="">全部</button>
+</nav>
+
+<!-- Records List -->
+<main id="recordsList">
+  <div id="emptyState" class="empty-state">
+    <div class="empty-icon">📋</div>
+    <p>还没有病历记录</p>
+    <p class="sub">点击右上角「+ 上传」添加第一条记录</p>
+  </div>
+</main>
+
+<!-- Upload Modal -->
+<div id="uploadModal" class="modal" style="display:none;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>上传病历</h2>
+      <button class="close-btn" onclick="hideUploadModal()">&times;</button>
+    </div>
+    <form id="uploadForm" onsubmit="submitRecord(event)">
+      <div class="form-group">
+        <label>拍照 / 选择图片 <span class="required">*</span></label>
+        <div id="imagePreviewArea" class="image-upload-area" onclick="document.getElementById('imageInput').click()">
+          <div id="uploadPlaceholder">
+            <div class="upload-icon">📷</div>
+            <p>点击拍照或选择图片</p>
+          </div>
+          <img id="imagePreview" style="display:none;">
+        </div>
+        <input type="file" id="imageInput" accept="image/*" capture="environment" onchange="previewImage(this)" style="display:none;">
+      </div>
+      <div class="form-group">
+        <label>标题 <span class="required">*</span></label>
+        <input type="text" id="titleInput" placeholder="例：血常规检查" required>
+      </div>
+      <div class="form-group">
+        <label>分类</label>
+        <select id="categorySelect"></select>
+      </div>
+      <div class="form-group">
+        <label>备注</label>
+        <textarea id="noteInput" rows="2" placeholder="可选备注信息"></textarea>
+      </div>
+      <button type="submit" id="submitBtn" class="submit-btn">上传保存</button>
+    </form>
+  </div>
+</div>
+
+<!-- Image Viewer Modal -->
+<div id="viewerModal" class="modal" style="display:none;" onclick="closeViewer(event)">
+  <div class="viewer-header">
+    <span id="viewerTitle"></span>
+    <button class="close-btn light" onclick="hideViewer()">&times;</button>
+  </div>
+  <div class="viewer-body">
+    <img id="viewerImage">
+  </div>
+  <div class="viewer-footer">
+    <span id="viewerMeta"></span>
+    <button class="delete-btn" id="viewerDeleteBtn">删除</button>
+  </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="loading-overlay" style="display:none;">
+  <div class="spinner"></div>
+  <p>上传中...</p>
+</div>
+
+<script>
+let categories = {};
+let currentCategory = "";
+let currentViewId = null;
+
+async function init() {
+  const res = await fetch("/api/categories");
+  categories = await res.json();
+  renderCategoryNav();
+  loadRecords();
+}
+
+function renderCategoryNav() {
+  const nav = document.getElementById("categoryNav");
+  let html = '<button class="cat-btn active" data-cat="" onclick="filterCategory(this, \'\')">全部</button>';
+  for (const [key, label] of Object.entries(categories)) {
+    html += `<button class="cat-btn" data-cat="${key}" onclick="filterCategory(this, '${key}')">${label}</button>`;
+  }
+  nav.innerHTML = html;
+  // populate select
+  const sel = document.getElementById("categorySelect");
+  sel.innerHTML = "";
+  for (const [key, label] of Object.entries(categories)) {
+    sel.innerHTML += `<option value="${key}">${label}</option>`;
+  }
+}
+
+function filterCategory(btn, cat) {
+  currentCategory = cat;
+  document.querySelectorAll(".cat-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  loadRecords();
+}
+
+async function loadRecords() {
+  const url = currentCategory ? `/api/records?category=${currentCategory}` : "/api/records";
+  const res = await fetch(url);
+  const data = await res.json();
+  const main = document.getElementById("recordsList");
+  if (data.items.length === 0) {
+    document.getElementById("emptyState").style.display = "";
+    main.innerHTML = "";
+    main.appendChild(createEmptyState());
+    return;
+  }
+  let html = '<div class="record-grid">';
+  for (const r of data.items) {
+    const date = r.created_at ? new Date(r.created_at).toLocaleDateString("zh-CN") : "";
+    html += `
+      <div class="record-card" onclick="viewRecord('${r.id}')">
+        <img src="/api/records/${r.id}/thumb" loading="lazy" alt="${r.title}">
+        <div class="record-info">
+          <div class="title">${escapeHtml(r.title)}</div>
+          <div class="meta">
+            <span class="cat-tag">${escapeHtml(r.category_label)}</span>
+            <span>${date}</span>
+          </div>
+        </div>
+      </div>`;
+  }
+  html += "</div>";
+  main.innerHTML = html;
+}
+
+function createEmptyState() {
+  const div = document.createElement("div");
+  div.className = "empty-state";
+  div.innerHTML = `<div class="empty-icon">📋</div><p>还没有病历记录</p>
+    <p class="sub">点击右上角「+ 上传」添加第一条记录</p>`;
+  return div;
+}
+
+function showUploadModal() {
+  document.getElementById("uploadModal").style.display = "flex";
+  document.body.style.overflow = "hidden";
+}
+
+function hideUploadModal() {
+  document.getElementById("uploadModal").style.display = "none";
+  document.body.style.overflow = "";
+  document.getElementById("uploadForm").reset();
+  document.getElementById("imagePreview").style.display = "none";
+  document.getElementById("uploadPlaceholder").style.display = "";
+}
+
+function previewImage(input) {
+  if (input.files && input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = document.getElementById("imagePreview");
+      img.src = e.target.result;
+      img.style.display = "block";
+      document.getElementById("uploadPlaceholder").style.display = "none";
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+async function submitRecord(e) {
+  e.preventDefault();
+  const fileInput = document.getElementById("imageInput");
+  if (!fileInput.files || !fileInput.files[0]) {
+    alert("请选择图片");
+    return;
+  }
+  const btn = document.getElementById("submitBtn");
+  const overlay = document.getElementById("loadingOverlay");
+  btn.disabled = true;
+  overlay.style.display = "flex";
+
+  const fd = new FormData();
+  fd.append("image", fileInput.files[0]);
+  fd.append("title", document.getElementById("titleInput").value);
+  fd.append("category", document.getElementById("categorySelect").value);
+  fd.append("note", document.getElementById("noteInput").value);
+
+  try {
+    const res = await fetch("/api/records", { method: "POST", body: fd });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || "上传失败");
+    }
+    hideUploadModal();
+    loadRecords();
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    btn.disabled = false;
+    overlay.style.display = "none";
+  }
+}
+
+async function viewRecord(id) {
+  currentViewId = id;
+  const res = await fetch(`/api/records/${id}`);
+  const r = await res.json();
+  document.getElementById("viewerTitle").textContent = r.title;
+  document.getElementById("viewerImage").src = `/api/records/${id}/image`;
+  const date = r.created_at ? new Date(r.created_at).toLocaleDateString("zh-CN") : "";
+  let meta = `${r.category_label} · ${date}`;
+  if (r.note) meta += ` · ${r.note}`;
+  document.getElementById("viewerMeta").textContent = meta;
+  document.getElementById("viewerDeleteBtn").onclick = () => deleteRecord(id);
+  document.getElementById("viewerModal").style.display = "flex";
+  document.body.style.overflow = "hidden";
+}
+
+function hideViewer() {
+  document.getElementById("viewerModal").style.display = "none";
+  document.body.style.overflow = "";
+  currentViewId = null;
+}
+
+function closeViewer(e) {
+  if (e.target === document.getElementById("viewerModal") || e.target.classList.contains("viewer-body")) {
+    hideViewer();
+  }
+}
+
+async function deleteRecord(id) {
+  if (!confirm("确定删除这条病历记录吗？")) return;
+  const res = await fetch(`/api/records/${id}`, { method: "DELETE" });
+  if (res.ok) {
+    hideViewer();
+    loadRecords();
+  } else {
+    alert("删除失败");
+  }
+}
+
+function escapeHtml(s) {
+  const d = document.createElement("div");
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+init();
+</script>
+</body>
+</html>
