@@ -96,8 +96,17 @@ def make_thumbnail(image_bytes: bytes, max_size: int = 400) -> bytes:
 
 
 # --- Baidu OCR Service ---
-BAIDU_API_KEY = os.environ.get("BAIDU_API_KEY", "")
-BAIDU_SECRET_KEY = os.environ.get("BAIDU_SECRET_KEY", "")
+# Support multiple env var naming conventions
+BAIDU_API_KEY = (
+    os.environ.get("BAIDU_API_KEY", "")
+    or os.environ.get("BAIDU_OCR_API_KEY", "")
+    or os.environ.get("BAIDU_OCR_KEY", "")
+)
+BAIDU_SECRET_KEY = (
+    os.environ.get("BAIDU_SECRET_KEY", "")
+    or os.environ.get("BAIDU_OCR_SECRET_KEY", "")
+    or os.environ.get("BAIDU_OCR_SECRET", "")
+)
 _baidu_token_cache = {"token": "", "expires": 0}
 
 
@@ -388,3 +397,23 @@ async def reocr_record(record_id: str):
 async def ocr_config_status():
     """Check if OCR is configured."""
     return {"enabled": bool(BAIDU_API_KEY and BAIDU_SECRET_KEY)}
+
+
+@app.get("/api/debug/env")
+async def debug_env():
+    """Debug endpoint to check which BAIDU env vars are set (values masked)."""
+    keys_to_check = [
+        "BAIDU_API_KEY", "BAIDU_SECRET_KEY",
+        "BAIDU_OCR_API_KEY", "BAIDU_OCR_SECRET_KEY",
+        "BAIDU_OCR_KEY", "BAIDU_OCR_SECRET",
+    ]
+    result = {}
+    for k in keys_to_check:
+        val = os.environ.get(k, "")
+        if val:
+            result[k] = val[:4] + "****" + val[-4:] if len(val) > 8 else "****"
+        else:
+            result[k] = "(not set)"
+    result["resolved_api_key"] = (BAIDU_API_KEY[:4] + "****") if BAIDU_API_KEY else "(empty)"
+    result["resolved_secret_key"] = (BAIDU_SECRET_KEY[:4] + "****") if BAIDU_SECRET_KEY else "(empty)"
+    return result
