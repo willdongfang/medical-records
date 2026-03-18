@@ -1,16 +1,22 @@
 import os
 import uuid
 import base64
+import json
+import logging
+import threading
 from datetime import datetime, timezone
 from io import BytesIO
 from typing import Optional
 
+import requests
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Query
 from fastapi.responses import HTMLResponse, Response, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import create_engine, Column, String, DateTime, LargeBinary, Text, Integer
 from sqlalchemy.orm import declarative_base, sessionmaker
 from PIL import Image
+
+logger = logging.getLogger(__name__)
 
 # --- Database setup ---
 DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./records.db")
@@ -33,10 +39,32 @@ class MedicalRecord(Base):
     image_data = Column(LargeBinary, nullable=False)
     image_mime = Column(String(50), nullable=False)
     thumb_data = Column(LargeBinary, nullable=True)
+    ocr_text = Column(Text, default="")
+    ocr_tables = Column(Text, default="")  # JSON string of table data
+    ocr_status = Column(String(20), default="pending")  # pending, processing, done, failed, disabled
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 Base.metadata.create_all(bind=engine)
+
+# Simple migration: add new columns if they don't exist (for existing deployments)
+def _migrate_db():
+    from sqlalchemy import inspect, text
+    insp = inspect(engine)
+    if insp.has_table("medical_records"):
+        existing = {col["name"] for col in insp.get_columns("medical_records")}
+        with engine.begin() as conn:
+            if "ocr_text" not in existing:
+                conn.execute(text("ALTER TABLE medical_records ADD COLUMN ocr_text TEXT DEFAULT ''"))
+            if "ocr_tables" not in existing:
+                conn.execute(text("ALTER TABLE medical_records ADD COLUMN ocr_tables TEXT DEFAULT ''"))
+            if "ocr_status" not in existing:
+                conn.execute(text("ALTER TABLE medical_records ADD COLUMN ocr_status VARCHAR(20) DEFAULT 'disabled'"))
+
+try:
+    _migrate_db()
+except Exception as e:
+    logger.warning(f"Migration skipped: {e}")
 
 # --- App ---
 app = FastAPI(title="Medical Records")
@@ -65,6 +93,130 @@ def make_thumbnail(image_bytes: bytes, max_size: int = 400) -> bytes:
     buf = BytesIO()
     img.save(buf, format="JPEG", quality=75)
     return buf.getvalue()
+
+
+# --- Baidu OCR Service ---
+BAIDU_API_KEY = os.environ.get("BAIDU_OCR_API_KEY", "")
+BAIDU_SECRET_KEY = os.environ.get("BAIDU_OCR_SECRET_KEY", "")
+_baidu_token_cache = {"token": "", "expires": 0}
+
+
+def get_baidu_access_token() -> str:
+    """Get Baidu OCR access token with caching."""
+    import time
+    now = time.time()
+    if _baidu_token_cache["token"] and now < _baidu_token_cache["expires"]:
+        return _baidu_token_cache["token"]
+    if not BAIDU_API_KEY or not BAIDU_SECRET_KEY:
+        return ""
+    try:
+        resp = requests.post(
+            "https://aip.baidubce.com/oauth/2.0/token",
+            params={
+                "grant_type": "client_credentials",
+                "client_id": BAIDU_API_KEY,
+                "client_secret": BAIDU_SECRET_KEY,
+            },
+            timeout=10,
+        )
+        data = resp.json()
+        token = data.get("access_token", "")
+        expires_in = data.get("expires_in", 2592000)
+        _baidu_token_cache["token"] = token
+        _baidu_token_cache["expires"] = now + expires_in - 600
+        return token
+    except Exception as e:
+        logger.error(f"Failed to get Baidu access token: {e}")
+        return ""
+
+
+def ocr_general_text(image_bytes: bytes) -> str:
+    """Call Baidu OCR general text recognition."""
+    token = get_baidu_access_token()
+    if not token:
+        return ""
+    try:
+        img_b64 = base64.b64encode(image_bytes).decode()
+        resp = requests.post(
+            f"https://aip.baidubce.com/rest/2.0/ocr/v1/general_basic?access_token={token}",
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            data={"image": img_b64, "language_type": "CHN_ENG", "detect_direction": "true"},
+            timeout=30,
+        )
+        data = resp.json()
+        if "words_result" in data:
+            lines = [item["words"] for item in data["words_result"]]
+            return "\n".join(lines)
+        logger.warning(f"OCR text response unexpected: {data}")
+        return ""
+    except Exception as e:
+        logger.error(f"OCR general text failed: {e}")
+        return ""
+
+
+def ocr_table(image_bytes: bytes) -> list:
+    """Call Baidu OCR table recognition. Returns list of tables, each table is list of rows."""
+    token = get_baidu_access_token()
+    if not token:
+        return []
+    try:
+        img_b64 = base64.b64encode(image_bytes).decode()
+        resp = requests.post(
+            f"https://aip.baidubce.com/rest/2.0/ocr/v1/table?access_token={token}",
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            data={"image": img_b64},
+            timeout=30,
+        )
+        data = resp.json()
+        if "tables_result" not in data:
+            return []
+        tables = []
+        for table in data["tables_result"]:
+            body = table.get("body", [])
+            if not body:
+                continue
+            max_row = max(int(c.get("row_start", 0)) for c in body) + 1
+            max_col = max(int(c.get("col_start", 0)) for c in body) + 1
+            grid = [[""] * max_col for _ in range(max_row)]
+            for cell in body:
+                r = int(cell.get("row_start", 0))
+                c = int(cell.get("col_start", 0))
+                grid[r][c] = cell.get("words", "")
+            tables.append(grid)
+        return tables
+    except Exception as e:
+        logger.error(f"OCR table failed: {e}")
+        return []
+
+
+def run_ocr_background(record_id: str, image_bytes: bytes):
+    """Run OCR in a background thread and update the database."""
+    db = SessionLocal()
+    try:
+        record = db.query(MedicalRecord).filter(MedicalRecord.id == record_id).first()
+        if not record:
+            return
+        record.ocr_status = "processing"
+        db.commit()
+
+        text = ocr_general_text(image_bytes)
+        tables = ocr_table(image_bytes)
+
+        record.ocr_text = text
+        record.ocr_tables = json.dumps(tables, ensure_ascii=False) if tables else ""
+        record.ocr_status = "done"
+        db.commit()
+    except Exception as e:
+        logger.error(f"Background OCR failed for {record_id}: {e}")
+        try:
+            record = db.query(MedicalRecord).filter(MedicalRecord.id == record_id).first()
+            if record:
+                record.ocr_status = "failed"
+                db.commit()
+        except Exception:
+            pass
+    finally:
+        db.close()
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -98,6 +250,7 @@ async def create_record(
 
     db = SessionLocal()
     try:
+        ocr_enabled = bool(BAIDU_API_KEY and BAIDU_SECRET_KEY)
         record = MedicalRecord(
             title=title.strip(),
             category=category,
@@ -105,10 +258,18 @@ async def create_record(
             image_data=content,
             image_mime=image.content_type,
             thumb_data=thumb,
+            ocr_status="pending" if ocr_enabled else "disabled",
         )
         db.add(record)
         db.commit()
-        return {"id": record.id, "message": "上传成功"}
+        record_id = record.id
+
+        # Trigger OCR in background
+        if ocr_enabled:
+            t = threading.Thread(target=run_ocr_background, args=(record_id, content), daemon=True)
+            t.start()
+
+        return {"id": record_id, "message": "上传成功"}
     finally:
         db.close()
 
@@ -154,6 +315,9 @@ async def get_record(record_id: str):
             "category": r.category,
             "category_label": CATEGORIES.get(r.category, r.category),
             "note": r.note,
+            "ocr_text": r.ocr_text or "",
+            "ocr_tables": json.loads(r.ocr_tables) if r.ocr_tables else [],
+            "ocr_status": r.ocr_status or "disabled",
             "created_at": r.created_at.isoformat() if r.created_at else "",
         }
     finally:
@@ -198,3 +362,29 @@ async def delete_record(record_id: str):
         return {"message": "删除成功"}
     finally:
         db.close()
+
+
+@app.post("/api/records/{record_id}/reocr")
+async def reocr_record(record_id: str):
+    """Re-run OCR on an existing record."""
+    if not BAIDU_API_KEY or not BAIDU_SECRET_KEY:
+        raise HTTPException(400, "OCR未配置，请设置BAIDU_OCR_API_KEY和BAIDU_OCR_SECRET_KEY环境变量")
+    db = SessionLocal()
+    try:
+        r = db.query(MedicalRecord).filter(MedicalRecord.id == record_id).first()
+        if not r:
+            raise HTTPException(404, "Record not found")
+        image_bytes = bytes(r.image_data)
+        r.ocr_status = "pending"
+        db.commit()
+        t = threading.Thread(target=run_ocr_background, args=(record_id, image_bytes), daemon=True)
+        t.start()
+        return {"message": "OCR重新识别已启动"}
+    finally:
+        db.close()
+
+
+@app.get("/api/ocr-status")
+async def ocr_config_status():
+    """Check if OCR is configured."""
+    return {"enabled": bool(BAIDU_API_KEY and BAIDU_SECRET_KEY)}

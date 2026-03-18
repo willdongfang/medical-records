@@ -91,18 +91,47 @@ main { padding: 12px; }
 .submit-btn:disabled { background: #94a3b8; cursor: not-allowed; }
 
 /* Viewer */
-#viewerModal { flex-direction: column; background: rgba(0,0,0,0.92); align-items: center; }
+#viewerModal { flex-direction: column; background: var(--card-bg); align-items: center; }
 .viewer-header { width: 100%; padding: 12px 16px; padding-top: calc(12px + var(--safe-top));
   display: flex; justify-content: space-between; align-items: center;
-  color: #fff; font-size: 15px; font-weight: 500; flex-shrink: 0; }
+  color: var(--text); font-size: 15px; font-weight: 600; flex-shrink: 0;
+  border-bottom: 1px solid var(--border); background: var(--card-bg); }
+.viewer-tabs { width: 100%; display: flex; background: var(--card-bg);
+  border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.vtab { flex: 1; padding: 10px; border: none; background: none; font-size: 14px;
+  color: var(--text-secondary); cursor: pointer; position: relative; font-weight: 500; }
+.vtab.active { color: var(--primary); }
+.vtab.active::after { content: ""; position: absolute; bottom: 0; left: 20%; right: 20%;
+  height: 2px; background: var(--primary); border-radius: 1px; }
 .viewer-body { flex: 1; display: flex; align-items: center; justify-content: center;
-  overflow: auto; width: 100%; padding: 8px; }
+  overflow: auto; width: 100%; padding: 8px; background: #f8fafc; }
 #viewerImage { max-width: 100%; max-height: 100%; object-fit: contain; }
 .viewer-footer { width: 100%; padding: 12px 16px; padding-bottom: calc(12px + var(--safe-bottom));
   display: flex; justify-content: space-between; align-items: center;
-  color: rgba(255,255,255,0.7); font-size: 12px; flex-shrink: 0; }
+  color: var(--text-secondary); font-size: 12px; flex-shrink: 0;
+  border-top: 1px solid var(--border); background: var(--card-bg); }
+.viewer-actions { display: flex; gap: 8px; }
 .delete-btn { background: var(--danger); color: #fff; border: none; padding: 8px 18px;
   border-radius: 8px; font-size: 13px; cursor: pointer; }
+.reocr-btn { background: var(--primary); color: #fff; border: none; padding: 8px 14px;
+  border-radius: 8px; font-size: 13px; cursor: pointer; }
+
+/* OCR content */
+.ocr-text-content { width: 100%; max-width: 500px; padding: 16px; font-size: 14px;
+  line-height: 1.8; white-space: pre-wrap; word-break: break-all; color: var(--text);
+  align-self: flex-start; }
+.ocr-text-content .ocr-placeholder { text-align: center; color: var(--text-secondary);
+  padding: 40px 0; }
+.ocr-table-content { width: 100%; padding: 12px; overflow-x: auto; align-self: flex-start; }
+.ocr-table-content table { width: 100%; border-collapse: collapse; font-size: 13px;
+  background: var(--card-bg); border-radius: 8px; overflow: hidden; }
+.ocr-table-content th, .ocr-table-content td { border: 1px solid var(--border);
+  padding: 8px 10px; text-align: left; }
+.ocr-table-content tr:first-child th, .ocr-table-content tr:first-child td {
+  background: #f1f5f9; font-weight: 600; }
+.ocr-table-content .no-table { text-align: center; color: var(--text-secondary);
+  padding: 40px 0; }
+.ocr-table-content + .ocr-table-content { margin-top: 16px; }
 
 .loading-overlay { position: fixed; inset: 0; z-index: 999; background: rgba(255,255,255,0.85);
   display: flex; flex-direction: column; align-items: center; justify-content: center; }
@@ -176,17 +205,31 @@ main { padding: 12px; }
 </div>
 
 <!-- Image Viewer Modal -->
-<div id="viewerModal" class="modal" style="display:none;" onclick="closeViewer(event)">
+<div id="viewerModal" class="modal" style="display:none;">
   <div class="viewer-header">
     <span id="viewerTitle"></span>
-    <button class="close-btn light" onclick="hideViewer()">&times;</button>
+    <button class="close-btn" onclick="hideViewer()">&times;</button>
   </div>
-  <div class="viewer-body">
+  <div class="viewer-tabs">
+    <button class="vtab active" onclick="switchViewerTab(this, 'image')">原图</button>
+    <button class="vtab" onclick="switchViewerTab(this, 'text')">文字</button>
+    <button class="vtab" onclick="switchViewerTab(this, 'table')">表格</button>
+  </div>
+  <div class="viewer-body" id="viewerBodyImage">
     <img id="viewerImage">
+  </div>
+  <div class="viewer-body" id="viewerBodyText" style="display:none;">
+    <div id="ocrTextContent" class="ocr-text-content"></div>
+  </div>
+  <div class="viewer-body" id="viewerBodyTable" style="display:none;">
+    <div id="ocrTableContent" class="ocr-table-content"></div>
   </div>
   <div class="viewer-footer">
     <span id="viewerMeta"></span>
-    <button class="delete-btn" id="viewerDeleteBtn">删除</button>
+    <div class="viewer-actions">
+      <button class="reocr-btn" id="viewerReocrBtn" style="display:none;" onclick="reocrRecord()">重新识别</button>
+      <button class="delete-btn" id="viewerDeleteBtn">删除</button>
+    </div>
   </div>
 </div>
 
@@ -339,20 +382,99 @@ async function viewRecord(id) {
   if (r.note) meta += ` · ${r.note}`;
   document.getElementById("viewerMeta").textContent = meta;
   document.getElementById("viewerDeleteBtn").onclick = () => deleteRecord(id);
+
+  // OCR text
+  const textEl = document.getElementById("ocrTextContent");
+  if (r.ocr_status === "done" && r.ocr_text) {
+    textEl.textContent = r.ocr_text;
+  } else if (r.ocr_status === "processing" || r.ocr_status === "pending") {
+    textEl.innerHTML = '<div class="ocr-placeholder">OCR 识别中...</div>';
+  } else if (r.ocr_status === "disabled") {
+    textEl.innerHTML = '<div class="ocr-placeholder">OCR 未配置<br><small>请设置百度OCR环境变量</small></div>';
+  } else if (r.ocr_status === "failed") {
+    textEl.innerHTML = '<div class="ocr-placeholder">OCR 识别失败，可点击「重新识别」重试</div>';
+  } else {
+    textEl.innerHTML = '<div class="ocr-placeholder">暂无文字数据</div>';
+  }
+
+  // OCR tables
+  const tableEl = document.getElementById("ocrTableContent");
+  if (r.ocr_tables && r.ocr_tables.length > 0) {
+    let html = "";
+    r.ocr_tables.forEach((table, idx) => {
+      html += '<table>';
+      table.forEach((row, ri) => {
+        html += "<tr>";
+        row.forEach(cell => {
+          const tag = ri === 0 ? "th" : "td";
+          html += `<${tag}>${escapeHtml(cell)}</${tag}>`;
+        });
+        html += "</tr>";
+      });
+      html += "</table>";
+      if (idx < r.ocr_tables.length - 1) html += "<br>";
+    });
+    tableEl.innerHTML = html;
+  } else if (r.ocr_status === "processing" || r.ocr_status === "pending") {
+    tableEl.innerHTML = '<div class="no-table">OCR 识别中...</div>';
+  } else {
+    tableEl.innerHTML = '<div class="no-table">暂无表格数据</div>';
+  }
+
+  // Show re-OCR button
+  const reocrBtn = document.getElementById("viewerReocrBtn");
+  reocrBtn.style.display = (r.ocr_status === "failed" || r.ocr_status === "done" || r.ocr_status === "disabled") ? "" : "none";
+
+  // Reset to image tab
+  switchViewerTab(document.querySelector('.vtab'), 'image');
+
   document.getElementById("viewerModal").style.display = "flex";
   document.body.style.overflow = "hidden";
+}
+
+function switchViewerTab(btn, tab) {
+  document.querySelectorAll(".vtab").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  document.getElementById("viewerBodyImage").style.display = tab === "image" ? "flex" : "none";
+  document.getElementById("viewerBodyText").style.display = tab === "text" ? "flex" : "none";
+  document.getElementById("viewerBodyTable").style.display = tab === "table" ? "flex" : "none";
+}
+
+async function reocrRecord() {
+  if (!currentViewId) return;
+  const btn = document.getElementById("viewerReocrBtn");
+  btn.textContent = "识别中...";
+  btn.disabled = true;
+  try {
+    const res = await fetch(`/api/records/${currentViewId}/reocr`, { method: "POST" });
+    if (!res.ok) {
+      const err = await res.json();
+      alert(err.detail || "重新识别失败");
+      return;
+    }
+    // Poll for completion
+    let attempts = 0;
+    const poll = setInterval(async () => {
+      attempts++;
+      const r2 = await fetch(`/api/records/${currentViewId}`);
+      const data = await r2.json();
+      if (data.ocr_status === "done" || data.ocr_status === "failed" || attempts > 30) {
+        clearInterval(poll);
+        viewRecord(currentViewId);
+      }
+    }, 2000);
+  } catch (e) {
+    alert("重新识别失败");
+  } finally {
+    btn.textContent = "重新识别";
+    btn.disabled = false;
+  }
 }
 
 function hideViewer() {
   document.getElementById("viewerModal").style.display = "none";
   document.body.style.overflow = "";
   currentViewId = null;
-}
-
-function closeViewer(e) {
-  if (e.target === document.getElementById("viewerModal") || e.target.classList.contains("viewer-body")) {
-    hideViewer();
-  }
 }
 
 async function deleteRecord(id) {
