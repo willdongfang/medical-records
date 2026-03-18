@@ -151,7 +151,10 @@ main { padding: 12px; }
 <!-- Header -->
 <header id="appHeader">
   <h1>病历本</h1>
-  <button id="btnUpload" onclick="showUploadModal()">+ 上传</button>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <button id="btnSettings" onclick="showSettings()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;padding:8px 12px;border-radius:20px;font-size:14px;cursor:pointer;">设置</button>
+    <button id="btnUpload" onclick="showUploadModal()">+ 上传</button>
+  </div>
 </header>
 
 <!-- Category Filter -->
@@ -230,6 +233,30 @@ main { padding: 12px; }
       <button class="reocr-btn" id="viewerReocrBtn" style="display:none;" onclick="reocrRecord()">重新识别</button>
       <button class="delete-btn" id="viewerDeleteBtn">删除</button>
     </div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div id="settingsModal" class="modal" style="display:none;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>OCR 设置</h2>
+      <button class="close-btn" onclick="hideSettings()">&times;</button>
+    </div>
+    <div id="ocrStatusBanner" style="padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:14px;"></div>
+    <form id="ocrSettingsForm" onsubmit="saveOcrSettings(event)">
+      <div class="form-group">
+        <label>百度OCR API Key <span class="required">*</span></label>
+        <input type="text" id="ocrApiKey" placeholder="输入 API Key" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label>百度OCR Secret Key <span class="required">*</span></label>
+        <input type="password" id="ocrSecretKey" placeholder="输入 Secret Key" autocomplete="off">
+      </div>
+      <button type="submit" class="submit-btn">保存配置</button>
+      <button type="button" class="submit-btn" style="background:#64748b;margin-top:8px;" onclick="testOcrConnection()">测试连接</button>
+    </form>
+    <div id="ocrTestResult" style="margin-top:12px;padding:10px 14px;border-radius:8px;font-size:13px;display:none;"></div>
   </div>
 </div>
 
@@ -492,6 +519,89 @@ function escapeHtml(s) {
   const d = document.createElement("div");
   d.textContent = s;
   return d.innerHTML;
+}
+
+// --- Settings ---
+async function showSettings() {
+  document.getElementById("settingsModal").style.display = "flex";
+  document.body.style.overflow = "hidden";
+  document.getElementById("ocrTestResult").style.display = "none";
+  // Load current settings
+  try {
+    const res = await fetch("/api/settings/ocr");
+    const data = await res.json();
+    const banner = document.getElementById("ocrStatusBanner");
+    if (data.enabled) {
+      banner.style.background = "#ecfdf5";
+      banner.style.color = "#065f46";
+      banner.textContent = "OCR 已配置 (来源: " + (data.source === "database" ? "应用设置" : "环境变量") + ")";
+      document.getElementById("ocrApiKey").placeholder = data.api_key_masked || "已配置";
+      document.getElementById("ocrSecretKey").placeholder = data.secret_key_masked || "已配置";
+    } else {
+      banner.style.background = "#fef2f2";
+      banner.style.color = "#991b1b";
+      banner.textContent = "OCR 未配置 — 请输入百度OCR密钥";
+      document.getElementById("ocrApiKey").placeholder = "输入 API Key";
+      document.getElementById("ocrSecretKey").placeholder = "输入 Secret Key";
+    }
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+function hideSettings() {
+  document.getElementById("settingsModal").style.display = "none";
+  document.body.style.overflow = "";
+  document.getElementById("ocrSettingsForm").reset();
+}
+
+async function saveOcrSettings(e) {
+  e.preventDefault();
+  const apiKey = document.getElementById("ocrApiKey").value.trim();
+  const secretKey = document.getElementById("ocrSecretKey").value.trim();
+  if (!apiKey || !secretKey) {
+    alert("请输入 API Key 和 Secret Key");
+    return;
+  }
+  try {
+    const fd = new FormData();
+    fd.append("api_key", apiKey);
+    fd.append("secret_key", secretKey);
+    const res = await fetch("/api/settings/ocr", { method: "POST", body: fd });
+    const data = await res.json();
+    if (res.ok) {
+      alert(data.message || "保存成功");
+      showSettings(); // Refresh status
+    } else {
+      alert(data.detail || "保存失败");
+    }
+  } catch (err) {
+    alert("保存失败: " + err.message);
+  }
+}
+
+async function testOcrConnection() {
+  const result = document.getElementById("ocrTestResult");
+  result.style.display = "block";
+  result.style.background = "#f1f5f9";
+  result.style.color = "#475569";
+  result.textContent = "测试中...";
+  try {
+    const res = await fetch("/api/settings/ocr/test", { method: "POST" });
+    const data = await res.json();
+    if (data.success) {
+      result.style.background = "#ecfdf5";
+      result.style.color = "#065f46";
+    } else {
+      result.style.background = "#fef2f2";
+      result.style.color = "#991b1b";
+    }
+    result.textContent = data.message;
+  } catch (err) {
+    result.style.background = "#fef2f2";
+    result.style.color = "#991b1b";
+    result.textContent = "测试失败: " + err.message;
+  }
 }
 
 init();

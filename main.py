@@ -29,6 +29,13 @@ SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
 
 
+class AppConfig(Base):
+    __tablename__ = "app_config"
+
+    key = Column(String(100), primary_key=True)
+    value = Column(Text, default="")
+
+
 class MedicalRecord(Base):
     __tablename__ = "medical_records"
 
@@ -96,18 +103,45 @@ def make_thumbnail(image_bytes: bytes, max_size: int = 400) -> bytes:
 
 
 # --- Baidu OCR Service ---
-# Support multiple env var naming conventions
-BAIDU_API_KEY = (
-    os.environ.get("BAIDU_API_KEY", "")
-    or os.environ.get("BAIDU_OCR_API_KEY", "")
-    or os.environ.get("BAIDU_OCR_KEY", "")
-)
-BAIDU_SECRET_KEY = (
-    os.environ.get("BAIDU_SECRET_KEY", "")
-    or os.environ.get("BAIDU_OCR_SECRET_KEY", "")
-    or os.environ.get("BAIDU_OCR_SECRET", "")
-)
 _baidu_token_cache = {"token": "", "expires": 0}
+
+
+def _get_config_value(key: str) -> str:
+    """Get a config value from the database."""
+    db = SessionLocal()
+    try:
+        row = db.query(AppConfig).filter(AppConfig.key == key).first()
+        return row.value if row else ""
+    except Exception:
+        return ""
+    finally:
+        db.close()
+
+
+def get_ocr_keys() -> tuple:
+    """Get Baidu OCR API key and secret key. Check DB first, then env vars."""
+    api_key = _get_config_value("baidu_api_key")
+    secret_key = _get_config_value("baidu_secret_key")
+    if api_key and secret_key:
+        return api_key, secret_key
+    # Fallback to environment variables
+    api_key = (
+        os.environ.get("BAIDU_API_KEY", "")
+        or os.environ.get("BAIDU_OCR_API_KEY", "")
+        or os.environ.get("BAIDU_OCR_KEY", "")
+    )
+    secret_key = (
+        os.environ.get("BAIDU_SECRET_KEY", "")
+        or os.environ.get("BAIDU_OCR_SECRET_KEY", "")
+        or os.environ.get("BAIDU_OCR_SECRET", "")
+    )
+    return api_key, secret_key
+
+
+def ocr_is_enabled() -> bool:
+    """Check if OCR is configured."""
+    api_key, secret_key = get_ocr_keys()
+    return bool(api_key and secret_key)
 
 
 def get_baidu_access_token() -> str:
@@ -116,15 +150,16 @@ def get_baidu_access_token() -> str:
     now = time.time()
     if _baidu_token_cache["token"] and now < _baidu_token_cache["expires"]:
         return _baidu_token_cache["token"]
-    if not BAIDU_API_KEY or not BAIDU_SECRET_KEY:
+    api_key, secret_key = get_ocr_keys()
+    if not api_key or not secret_key:
         return ""
     try:
         resp = requests.post(
             "https://aip.baidubce.com/oauth/2.0/token",
             params={
                 "grant_type": "client_credentials",
-                "client_id": BAIDU_API_KEY,
-                "client_secret": BAIDU_SECRET_KEY,
+                "client_id": api_key,
+                "client_secret": secret_key,
             },
             timeout=10,
         )
@@ -259,7 +294,7 @@ async def create_record(
 
     db = SessionLocal()
     try:
-        ocr_enabled = bool(BAIDU_API_KEY and BAIDU_SECRET_KEY)
+        ocr_enabled = ocr_is_enabled()
         record = MedicalRecord(
             title=title.strip(),
             category=category,
@@ -376,8 +411,8 @@ async def delete_record(record_id: str):
 @app.post("/api/records/{record_id}/reocr")
 async def reocr_record(record_id: str):
     """Re-run OCR on an existing record."""
-    if not BAIDU_API_KEY or not BAIDU_SECRET_KEY:
-        raise HTTPException(400, "OCR未配置，请设置BAIDU_API_KEY和BAIDU_SECRET_KEY环境变量")
+    if not ocr_is_enabled():
+        raise HTTPException(400, "OCR未配置，请在设置页面配置百度OCR密钥")
     db = SessionLocal()
     try:
         r = db.query(MedicalRecord).filter(MedicalRecord.id == record_id).first()
@@ -396,24 +431,72 @@ async def reocr_record(record_id: str):
 @app.get("/api/ocr-status")
 async def ocr_config_status():
     """Check if OCR is configured."""
-    return {"enabled": bool(BAIDU_API_KEY and BAIDU_SECRET_KEY)}
+    return {"enabled": ocr_is_enabled()}
 
 
-@app.get("/api/debug/env")
-async def debug_env():
-    """Debug endpoint to check which BAIDU env vars are set (values masked)."""
-    keys_to_check = [
-        "BAIDU_API_KEY", "BAIDU_SECRET_KEY",
-        "BAIDU_OCR_API_KEY", "BAIDU_OCR_SECRET_KEY",
-        "BAIDU_OCR_KEY", "BAIDU_OCR_SECRET",
-    ]
-    result = {}
-    for k in keys_to_check:
-        val = os.environ.get(k, "")
-        if val:
-            result[k] = val[:4] + "****" + val[-4:] if len(val) > 8 else "****"
+@app.get("/api/settings/ocr")
+async def get_ocr_settings():
+    """Get OCR settings (keys are masked)."""
+    api_key, secret_key = get_ocr_keys()
+    return {
+        "enabled": bool(api_key and secret_key),
+        "api_key_masked": (api_key[:4] + "****" + api_key[-4:]) if api_key and len(api_key) > 8 else ("****" if api_key else ""),
+        "secret_key_masked": (secret_key[:4] + "****" + secret_key[-4:]) if secret_key and len(secret_key) > 8 else ("****" if secret_key else ""),
+        "source": "database" if _get_config_value("baidu_api_key") else ("env" if api_key else "none"),
+    }
+
+
+@app.post("/api/settings/ocr")
+async def save_ocr_settings(
+    api_key: str = Form(...),
+    secret_key: str = Form(...),
+):
+    """Save OCR API keys to database."""
+    if not api_key.strip() or not secret_key.strip():
+        raise HTTPException(400, "API Key 和 Secret Key 不能为空")
+    db = SessionLocal()
+    try:
+        # Upsert api_key
+        row = db.query(AppConfig).filter(AppConfig.key == "baidu_api_key").first()
+        if row:
+            row.value = api_key.strip()
         else:
-            result[k] = "(not set)"
-    result["resolved_api_key"] = (BAIDU_API_KEY[:4] + "****") if BAIDU_API_KEY else "(empty)"
-    result["resolved_secret_key"] = (BAIDU_SECRET_KEY[:4] + "****") if BAIDU_SECRET_KEY else "(empty)"
-    return result
+            db.add(AppConfig(key="baidu_api_key", value=api_key.strip()))
+        # Upsert secret_key
+        row = db.query(AppConfig).filter(AppConfig.key == "baidu_secret_key").first()
+        if row:
+            row.value = secret_key.strip()
+        else:
+            db.add(AppConfig(key="baidu_secret_key", value=secret_key.strip()))
+        db.commit()
+        # Clear token cache so next OCR call uses new keys
+        _baidu_token_cache["token"] = ""
+        _baidu_token_cache["expires"] = 0
+        return {"message": "OCR配置已保存", "enabled": True}
+    finally:
+        db.close()
+
+
+@app.post("/api/settings/ocr/test")
+async def test_ocr_settings():
+    """Test if OCR credentials are valid by requesting a token."""
+    api_key, secret_key = get_ocr_keys()
+    if not api_key or not secret_key:
+        return {"success": False, "message": "未配置OCR密钥"}
+    try:
+        resp = requests.post(
+            "https://aip.baidubce.com/oauth/2.0/token",
+            params={
+                "grant_type": "client_credentials",
+                "client_id": api_key,
+                "client_secret": secret_key,
+            },
+            timeout=10,
+        )
+        data = resp.json()
+        if "access_token" in data:
+            return {"success": True, "message": "OCR连接成功"}
+        else:
+            return {"success": False, "message": f"认证失败: {data.get('error_description', '未知错误')}"}
+    except Exception as e:
+        return {"success": False, "message": f"连接失败: {str(e)}"}
