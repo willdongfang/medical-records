@@ -699,21 +699,72 @@ async function loadRecords() {
   el.innerHTML = html;
 }
 
+/* ===== IMAGE COMPRESSION ===== */
+function compressImage(file, maxDim, quality) {
+  maxDim = maxDim || 1800;
+  quality = quality || 0.8;
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    img.onload = () => {
+      let w = img.width, h = img.height;
+      // Only resize if larger than maxDim
+      if (w > maxDim || h > maxDim) {
+        if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
+        else { w = Math.round(w * maxDim / h); h = maxDim; }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, w, h);
+      canvas.toBlob(blob => {
+        if (!blob) { reject(new Error("压缩失败")); return; }
+        const compressed = new File([blob], file.name.replace(/\.\w+$/, ".jpg"), { type: "image/jpeg" });
+        resolve({ file: compressed, dataUrl: canvas.toDataURL("image/jpeg", quality), originalSize: file.size, compressedSize: blob.size });
+      }, "image/jpeg", quality);
+    };
+    img.onerror = () => reject(new Error("图片加载失败"));
+    img.src = URL.createObjectURL(file);
+  });
+}
+
 /* ===== CAMERA / UPLOAD ===== */
 function triggerCamera() { document.getElementById("cameraInput").click(); }
 function triggerAlbum() { document.getElementById("albumInput").click(); }
 
-function onPhotoSelected(input) {
+async function onPhotoSelected(input) {
   if (!input.files || !input.files[0]) return;
-  selectedUploadFile = input.files[0];
-  const reader = new FileReader();
-  reader.onload = e => {
-    document.getElementById("uploadPreview").src = e.target.result;
+  const rawFile = input.files[0];
+  const overlay = document.getElementById("loadingOverlay");
+  document.getElementById("loadingText").textContent = "压缩图片中...";
+  overlay.style.display = "flex";
+
+  try {
+    // Compress: max 1800px, JPEG 80% quality
+    // Typical 10MB phone photo → ~300-800KB
+    const result = await compressImage(rawFile, 1800, 0.8);
+    selectedUploadFile = result.file;
+    document.getElementById("uploadPreview").src = result.dataUrl;
     document.getElementById("cameraStep1").style.display = "none";
     document.getElementById("cameraStep2").style.display = "flex";
     renderUploadMemberSelect();
-  };
-  reader.readAsDataURL(input.files[0]);
+    const savedPct = Math.round((1 - result.compressedSize / result.originalSize) * 100);
+    if (savedPct > 10) {
+      console.log(`Image compressed: ${(result.originalSize/1024/1024).toFixed(1)}MB → ${(result.compressedSize/1024/1024).toFixed(1)}MB (${savedPct}% smaller)`);
+    }
+  } catch (err) {
+    // Fallback: use original file if compression fails
+    selectedUploadFile = rawFile;
+    const reader = new FileReader();
+    reader.onload = e => {
+      document.getElementById("uploadPreview").src = e.target.result;
+      document.getElementById("cameraStep1").style.display = "none";
+      document.getElementById("cameraStep2").style.display = "flex";
+      renderUploadMemberSelect();
+    };
+    reader.readAsDataURL(rawFile);
+  } finally {
+    overlay.style.display = "none";
+  }
 }
 
 function renderUploadMemberSelect() {

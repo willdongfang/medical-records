@@ -123,13 +123,13 @@ AVATAR_COLORS = ["#2563eb", "#16a34a", "#dc2626", "#9333ea", "#ea580c", "#0891b2
 MAX_IMAGE_SIZE = 10 * 1024 * 1024
 
 
-def make_thumbnail(image_bytes: bytes, max_size: int = 400) -> bytes:
+def make_thumbnail(image_bytes: bytes, max_size: int = 300) -> bytes:
     img = Image.open(BytesIO(image_bytes))
     img.thumbnail((max_size, max_size), Image.LANCZOS)
     if img.mode in ("RGBA", "P"):
         img = img.convert("RGB")
     buf = BytesIO()
-    img.save(buf, format="JPEG", quality=75)
+    img.save(buf, format="JPEG", quality=60)
     return buf.getvalue()
 
 
