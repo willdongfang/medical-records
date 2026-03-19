@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>小安健康档案 - 管理后台</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif; background: #f3f4f6; color: #1f2937; line-height: 1.6; }
+  a { color: #2563eb; text-decoration: none; }
+
+  /* ---------- Login ---------- */
+  #loginScreen {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh; background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+  }
+  .login-card {
+    background: #fff; border-radius: 12px; padding: 40px 36px; width: 380px;
+    box-shadow: 0 10px 40px rgba(0,0,0,.15);
+  }
+  .login-card h1 { font-size: 22px; text-align: center; margin-bottom: 6px; color: #111827; }
+  .login-card .subtitle { text-align: center; color: #6b7280; font-size: 14px; margin-bottom: 28px; }
+  .login-card label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 6px; color: #374151; }
+  .login-card input[type="password"] {
+    width: 100%; padding: 10px 14px; border: 1px solid #d1d5db; border-radius: 8px;
+    font-size: 15px; outline: none; transition: border-color .2s;
+  }
+  .login-card input[type="password"]:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
+  .login-hint { font-size: 12px; color: #9ca3af; margin-top: 6px; }
+  .login-card .btn-primary { margin-top: 22px; width: 100%; }
+  .login-error { color: #dc2626; font-size: 13px; margin-top: 10px; text-align: center; display: none; }
+
+  /* ---------- Buttons ---------- */
+  .btn-primary {
+    background: #2563eb; color: #fff; border: none; padding: 10px 22px;
+    border-radius: 8px; font-size: 15px; cursor: pointer; font-weight: 500;
+    transition: background .2s;
+  }
+  .btn-primary:hover { background: #1d4ed8; }
+  .btn-secondary {
+    background: #fff; color: #374151; border: 1px solid #d1d5db; padding: 8px 18px;
+    border-radius: 8px; font-size: 14px; cursor: pointer; transition: background .2s;
+  }
+  .btn-secondary:hover { background: #f9fafb; }
+  .btn-danger {
+    background: #dc2626; color: #fff; border: none; padding: 6px 14px;
+    border-radius: 6px; font-size: 13px; cursor: pointer;
+  }
+  .btn-danger:hover { background: #b91c1c; }
+  .btn-sm { padding: 5px 12px; font-size: 13px; border-radius: 6px; }
+
+  /* ---------- App Shell ---------- */
+  #appShell { display: none; }
+  .header {
+    background: #fff; border-bottom: 1px solid #e5e7eb; padding: 0 28px;
+    display: flex; align-items: center; justify-content: space-between; height: 60px;
+    position: sticky; top: 0; z-index: 50;
+  }
+  .header h1 { font-size: 18px; color: #111827; }
+  .header-actions { display: flex; gap: 10px; align-items: center; }
+  .main { max-width: 1200px; margin: 0 auto; padding: 24px 28px; }
+
+  /* ---------- Tabs ---------- */
+  .tabs { display: flex; gap: 4px; background: #fff; border-radius: 10px; padding: 4px; margin-bottom: 24px; border: 1px solid #e5e7eb; }
+  .tab-btn {
+    flex: 1; padding: 10px 0; text-align: center; border: none; background: transparent;
+    font-size: 14px; font-weight: 500; color: #6b7280; cursor: pointer; border-radius: 8px;
+    transition: all .2s;
+  }
+  .tab-btn.active { background: #2563eb; color: #fff; }
+  .tab-btn:not(.active):hover { background: #f3f4f6; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ---------- Stats ---------- */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }
+  .stat-card {
+    background: #fff; border-radius: 10px; padding: 20px 22px;
+    border: 1px solid #e5e7eb;
+  }
+  .stat-card .label { font-size: 13px; color: #6b7280; margin-bottom: 4px; }
+  .stat-card .value { font-size: 28px; font-weight: 700; color: #111827; }
+  .stat-card .value.small { font-size: 18px; }
+  .badge {
+    display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 12px; font-weight: 600;
+  }
+  .badge-green { background: #d1fae5; color: #065f46; }
+  .badge-red { background: #fee2e2; color: #991b1b; }
+
+  /* ---------- Table ---------- */
+  .card { background: #fff; border-radius: 10px; border: 1px solid #e5e7eb; overflow: hidden; }
+  .card-header { padding: 16px 22px; border-bottom: 1px solid #e5e7eb; font-weight: 600; font-size: 15px; }
+  table { width: 100%; border-collapse: collapse; }
+  th { background: #f9fafb; text-align: left; padding: 12px 16px; font-size: 13px; color: #6b7280; font-weight: 600; border-bottom: 1px solid #e5e7eb; }
+  td { padding: 12px 16px; font-size: 14px; border-bottom: 1px solid #f3f4f6; }
+  tr:last-child td { border-bottom: none; }
+  .pagination { display: flex; justify-content: center; gap: 8px; padding: 16px; }
+
+  /* ---------- Config Forms ---------- */
+  .config-card { background: #fff; border-radius: 10px; border: 1px solid #e5e7eb; padding: 28px; max-width: 640px; }
+  .config-card h3 { font-size: 16px; margin-bottom: 20px; color: #111827; }
+  .form-group { margin-bottom: 18px; }
+  .form-group label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 6px; color: #374151; }
+  .form-group input[type="text"],
+  .form-group input[type="password"] {
+    width: 100%; padding: 9px 14px; border: 1px solid #d1d5db; border-radius: 8px;
+    font-size: 14px; outline: none; transition: border-color .2s;
+  }
+  .form-group input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
+  .form-group .hint { font-size: 12px; color: #9ca3af; margin-top: 4px; }
+  .status-row { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+
+  /* ---------- Modal ---------- */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.4); display: none;
+    align-items: center; justify-content: center; z-index: 100;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: #fff; border-radius: 12px; padding: 32px; width: 400px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.2);
+  }
+  .modal h2 { font-size: 18px; margin-bottom: 20px; }
+  .modal .form-group { margin-bottom: 14px; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+
+  /* ---------- Toast ---------- */
+  .toast-container { position: fixed; top: 20px; right: 20px; z-index: 200; display: flex; flex-direction: column; gap: 8px; }
+  .toast {
+    padding: 12px 20px; border-radius: 8px; font-size: 14px; color: #fff;
+    box-shadow: 0 4px 14px rgba(0,0,0,.15); animation: slideIn .3s ease;
+  }
+  .toast-success { background: #059669; }
+  .toast-error { background: #dc2626; }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
+
+  /* ---------- Misc ---------- */
+  .loading-spinner {
+    display: inline-block; width: 18px; height: 18px;
+    border: 2px solid #d1d5db; border-top-color: #2563eb; border-radius: 50%;
+    animation: spin .6s linear infinite; vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .empty-state { text-align: center; padding: 60px 20px; color: #9ca3af; font-size: 15px; }
+</style>
+</head>
+<body>
+
+<!-- ===== Login Screen ===== -->
+<div id="loginScreen">
+  <div class="login-card">
+    <h1>小安健康档案</h1>
+    <p class="subtitle">管理后台登录</p>
+    <div>
+      <label for="loginPassword">管理密码</label>
+      <input type="password" id="loginPassword" placeholder="请输入管理密码" autocomplete="current-password">
+      <p class="login-hint">默认密码: admin123</p>
+      <p class="login-error" id="loginError"></p>
+      <button class="btn-primary" id="loginBtn" onclick="doLogin()">登 录</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== App Shell ===== -->
+<div id="appShell">
+  <header class="header">
+    <h1>小安健康档案 - 管理后台</h1>
+    <div class="header-actions">
+      <button class="btn-secondary btn-sm" onclick="openChangePwd()">修改密码</button>
+      <button class="btn-secondary btn-sm" onclick="doLogout()">退出登录</button>
+    </div>
+  </header>
+
+  <div class="main">
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="dashboard" onclick="switchTab('dashboard')">概览</button>
+      <button class="tab-btn" data-tab="users" onclick="switchTab('users')">用户管理</button>
+      <button class="tab-btn" data-tab="ocr" onclick="switchTab('ocr')">OCR配置</button>
+      <button class="tab-btn" data-tab="sms" onclick="switchTab('sms')">短信配置</button>
+    </div>
+
+    <!-- Dashboard -->
+    <div class="tab-panel active" id="panel-dashboard">
+      <div class="stats-grid" id="statsGrid">
+        <div class="stat-card"><div class="label">总用户数</div><div class="value" id="statUsers">--</div></div>
+        <div class="stat-card"><div class="label">总记录数</div><div class="value" id="statRecords">--</div></div>
+        <div class="stat-card"><div class="label">OCR已处理</div><div class="value" id="statOcr">--</div></div>
+        <div class="stat-card"><div class="label">今日新记录</div><div class="value" id="statTodayRecords">--</div></div>
+        <div class="stat-card"><div class="label">今日新用户</div><div class="value" id="statTodayUsers">--</div></div>
+        <div class="stat-card"><div class="label">OCR 状态</div><div class="value small" id="statOcrStatus">--</div></div>
+        <div class="stat-card"><div class="label">短信 状态</div><div class="value small" id="statSmsStatus">--</div></div>
+      </div>
+    </div>
+
+    <!-- Users -->
+    <div class="tab-panel" id="panel-users">
+      <div class="card">
+        <div class="card-header">用户列表</div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>手机号</th><th>昵称</th><th>记录数</th><th>注册时间</th><th>最后登录</th><th>状态</th><th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="usersBody"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="usersPagination"></div>
+      </div>
+    </div>
+
+    <!-- OCR Config -->
+    <div class="tab-panel" id="panel-ocr">
+      <div class="config-card">
+        <h3>百度OCR配置</h3>
+        <div class="status-row">
+          <span>当前状态:</span>
+          <span id="ocrStatusBadge" class="badge">--</span>
+        </div>
+        <div class="form-group">
+          <label>API Key</label>
+          <input type="text" id="ocrApiKey" placeholder="请输入百度OCR API Key">
+          <p class="hint" id="ocrApiKeyHint"></p>
+        </div>
+        <div class="form-group">
+          <label>Secret Key</label>
+          <input type="text" id="ocrSecretKey" placeholder="请输入百度OCR Secret Key">
+          <p class="hint" id="ocrSecretKeyHint"></p>
+        </div>
+        <button class="btn-primary" onclick="saveOcrConfig()">保存配置</button>
+      </div>
+    </div>
+
+    <!-- SMS Config -->
+    <div class="tab-panel" id="panel-sms">
+      <div class="config-card">
+        <h3>阿里云短信配置</h3>
+        <div class="status-row">
+          <span>当前状态:</span>
+          <span id="smsStatusBadge" class="badge">--</span>
+        </div>
+        <div class="form-group">
+          <label>AccessKey ID</label>
+          <input type="text" id="smsAccessKey" placeholder="请输入阿里云 AccessKey ID">
+          <p class="hint" id="smsAccessKeyHint"></p>
+        </div>
+        <div class="form-group">
+          <label>AccessKey Secret</label>
+          <input type="text" id="smsAccessSecret" placeholder="请输入阿里云 AccessKey Secret">
+          <p class="hint" id="smsAccessSecretHint"></p>
+        </div>
+        <div class="form-group">
+          <label>签名名称</label>
+          <input type="text" id="smsSign" placeholder="请输入短信签名名称">
+          <p class="hint" id="smsSignHint"></p>
+        </div>
+        <div class="form-group">
+          <label>模板Code</label>
+          <input type="text" id="smsTemplate" placeholder="请输入短信模板Code">
+          <p class="hint" id="smsTemplateHint"></p>
+        </div>
+        <button class="btn-primary" onclick="saveSmsConfig()">保存配置</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Change Password Modal -->
+<div class="modal-overlay" id="changePwdModal">
+  <div class="modal">
+    <h2>修改密码</h2>
+    <div class="form-group">
+      <label>旧密码</label>
+      <input type="password" id="oldPassword" placeholder="请输入旧密码">
+    </div>
+    <div class="form-group">
+      <label>新密码</label>
+      <input type="password" id="newPassword" placeholder="请输入新密码">
+    </div>
+    <div class="form-group">
+      <label>确认新密码</label>
+      <input type="password" id="confirmPassword" placeholder="请再次输入新密码">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeChangePwd()">取消</button>
+      <button class="btn-primary" onclick="doChangePwd()">确认修改</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+(function() {
+  "use strict";
+
+  /* ========== Helpers ========== */
+
+  function getToken() {
+    return localStorage.getItem("admin_token") || "";
+  }
+
+  function authHeaders() {
+    return { "Authorization": "Bearer " + getToken() };
+  }
+
+  async function api(method, url, body) {
+    var opts = { method: method, headers: authHeaders() };
+    if (body) {
+      var fd = new FormData();
+      for (var k in body) { fd.append(k, body[k]); }
+      opts.body = fd;
+    }
+    var res = await fetch(url, opts);
+    if (res.status === 401 || res.status === 403) {
+      toast("登录已过期，请重新登录", "error");
+      doLogout();
+      throw new Error("Unauthorized");
+    }
+    var data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.detail || data.message || "请求失败");
+    }
+    return data;
+  }
+
+  function toast(msg, type) {
+    type = type || "success";
+    var el = document.createElement("div");
+    el.className = "toast toast-" + type;
+    el.textContent = msg;
+    document.getElementById("toastContainer").appendChild(el);
+    setTimeout(function() { el.remove(); }, 3000);
+  }
+
+  function formatTime(s) {
+    if (!s) return "--";
+    return s.replace("T", " ").substring(0, 19);
+  }
+
+  /* ========== Auth ========== */
+
+  window.doLogin = async function() {
+    var pwd = document.getElementById("loginPassword").value.trim();
+    var errEl = document.getElementById("loginError");
+    if (!pwd) { errEl.textContent = "请输入密码"; errEl.style.display = "block"; return; }
+    errEl.style.display = "none";
+    var btn = document.getElementById("loginBtn");
+    btn.disabled = true; btn.textContent = "登录中...";
+    try {
+      var fd = new FormData();
+      fd.append("password", pwd);
+      var res = await fetch("/api/admin/login", { method: "POST", body: fd });
+      var data = await res.json();
+      if (!res.ok) throw new Error(data.detail || data.message || "登录失败");
+      localStorage.setItem("admin_token", data.token);
+      showApp();
+    } catch (e) {
+      errEl.textContent = e.message; errEl.style.display = "block";
+    } finally {
+      btn.disabled = false; btn.textContent = "登 录";
+    }
+  };
+
+  window.doLogout = function() {
+    localStorage.removeItem("admin_token");
+    document.getElementById("appShell").style.display = "none";
+    document.getElementById("loginScreen").style.display = "flex";
+    document.getElementById("loginPassword").value = "";
+  };
+
+  document.getElementById("loginPassword").addEventListener("keydown", function(e) {
+    if (e.key === "Enter") doLogin();
+  });
+
+  /* ========== App Init ========== */
+
+  function showApp() {
+    document.getElementById("loginScreen").style.display = "none";
+    document.getElementById("appShell").style.display = "block";
+    switchTab("dashboard");
+  }
+
+  /* ========== Tabs ========== */
+
+  window.switchTab = function(tab) {
+    document.querySelectorAll(".tab-btn").forEach(function(b) {
+      b.classList.toggle("active", b.dataset.tab === tab);
+    });
+    document.querySelectorAll(".tab-panel").forEach(function(p) {
+      p.classList.toggle("active", p.id === "panel-" + tab);
+    });
+    if (tab === "dashboard") loadDashboard();
+    if (tab === "users") loadUsers(1);
+    if (tab === "ocr") loadOcrConfig();
+    if (tab === "sms") loadSmsConfig();
+  };
+
+  /* ========== Dashboard ========== */
+
+  async function loadDashboard() {
+    try {
+      var d = await api("GET", "/api/admin/dashboard");
+      document.getElementById("statUsers").textContent = d.user_count ?? "--";
+      document.getElementById("statRecords").textContent = d.record_count ?? "--";
+      document.getElementById("statOcr").textContent = d.ocr_done_count ?? "--";
+      document.getElementById("statTodayRecords").textContent = d.today_records ?? "--";
+      document.getElementById("statTodayUsers").textContent = d.today_new_users ?? "--";
+      setBadge("statOcrStatus", d.ocr_enabled, "已启用", "未配置");
+      setBadge("statSmsStatus", d.sms_configured, "已配置", "未配置");
+    } catch (e) { /* handled by api() */ }
+  }
+
+  function setBadge(elId, flag, onText, offText) {
+    var el = document.getElementById(elId);
+    if (flag) {
+      el.innerHTML = '<span class="badge badge-green">' + onText + '</span>';
+    } else {
+      el.innerHTML = '<span class="badge badge-red">' + offText + '</span>';
+    }
+  }
+
+  /* ========== Users ========== */
+
+  var currentPage = 1;
+  var pageSize = 20;
+
+  async function loadUsers(page) {
+    currentPage = page;
+    var tbody = document.getElementById("usersBody");
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;"><span class="loading-spinner"></span> 加载中...</td></tr>';
+    try {
+      var d = await api("GET", "/api/admin/users?page=" + page + "&size=" + pageSize);
+      var users = d.users || d.items || d.data || [];
+      var total = d.total || 0;
+      if (!users.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">暂无用户数据</td></tr>';
+        document.getElementById("usersPagination").innerHTML = "";
+        return;
+      }
+      var html = "";
+      users.forEach(function(u) {
+        var isActive = u.is_active !== false;
+        var statusBadge = isActive
+          ? '<span class="badge badge-green">正常</span>'
+          : '<span class="badge badge-red">禁用</span>';
+        var toggleLabel = isActive ? "禁用" : "启用";
+        var toggleClass = isActive ? "btn-danger btn-sm" : "btn-primary btn-sm";
+        html += "<tr>"
+          + "<td>" + (u.phone || "--") + "</td>"
+          + "<td>" + (u.nickname || "--") + "</td>"
+          + "<td>" + (u.record_count ?? 0) + "</td>"
+          + "<td>" + formatTime(u.created_at) + "</td>"
+          + "<td>" + formatTime(u.last_login) + "</td>"
+          + "<td>" + statusBadge + "</td>"
+          + '<td><button class="' + toggleClass + '" onclick="toggleUser(\'' + u.id + '\')">' + toggleLabel + "</button></td>"
+          + "</tr>";
+      });
+      tbody.innerHTML = html;
+      renderPagination(total, page);
+    } catch (e) {
+      tbody.innerHTML = '<tr><td colspan="7" class="empty-state">加载失败</td></tr>';
+    }
+  }
+
+  function renderPagination(total, current) {
+    var pages = Math.ceil(total / pageSize);
+    if (pages <= 1) { document.getElementById("usersPagination").innerHTML = ""; return; }
+    var html = "";
+    if (current > 1) html += '<button class="btn-secondary btn-sm" onclick="loadUsersPage(' + (current - 1) + ')">上一页</button>';
+    for (var i = 1; i <= pages; i++) {
+      if (pages > 7 && Math.abs(i - current) > 2 && i !== 1 && i !== pages) {
+        if (i === 2 || i === pages - 1) html += '<span style="padding:0 6px;">...</span>';
+        continue;
+      }
+      var cls = i === current ? "btn-primary btn-sm" : "btn-secondary btn-sm";
+      html += '<button class="' + cls + '" onclick="loadUsersPage(' + i + ')">' + i + "</button>";
+    }
+    if (current < pages) html += '<button class="btn-secondary btn-sm" onclick="loadUsersPage(' + (current + 1) + ')">下一页</button>';
+    document.getElementById("usersPagination").innerHTML = html;
+  }
+
+  window.loadUsersPage = function(p) { loadUsers(p); };
+
+  window.toggleUser = async function(id) {
+    try {
+      await api("POST", "/api/admin/users/" + id + "/toggle");
+      toast("操作成功");
+      loadUsers(currentPage);
+    } catch (e) {
+      toast(e.message, "error");
+    }
+  };
+
+  /* ========== OCR Config ========== */
+
+  async function loadOcrConfig() {
+    try {
+      var d = await api("GET", "/api/admin/config/ocr");
+      document.getElementById("ocrApiKey").value = "";
+      document.getElementById("ocrSecretKey").value = "";
+      document.getElementById("ocrApiKeyHint").textContent = d.baidu_api_key ? "当前值: " + d.baidu_api_key : "";
+      document.getElementById("ocrSecretKeyHint").textContent = d.baidu_secret_key ? "当前值: " + d.baidu_secret_key : "";
+      var badge = document.getElementById("ocrStatusBadge");
+      if (d.enabled || d.ocr_enabled) {
+        badge.className = "badge badge-green"; badge.textContent = "已启用";
+      } else {
+        badge.className = "badge badge-red"; badge.textContent = "未配置";
+      }
+    } catch (e) { /* handled */ }
+  }
+
+  window.saveOcrConfig = async function() {
+    var key = document.getElementById("ocrApiKey").value.trim();
+    var secret = document.getElementById("ocrSecretKey").value.trim();
+    if (!key && !secret) { toast("请填写至少一个字段", "error"); return; }
+    var body = {};
+    if (key) body.baidu_api_key = key;
+    if (secret) body.baidu_secret_key = secret;
+    try {
+      await api("POST", "/api/admin/config/ocr", body);
+      toast("OCR配置已保存");
+      loadOcrConfig();
+    } catch (e) {
+      toast(e.message, "error");
+    }
+  };
+
+  /* ========== SMS Config ========== */
+
+  async function loadSmsConfig() {
+    try {
+      var d = await api("GET", "/api/admin/config/sms");
+      document.getElementById("smsAccessKey").value = "";
+      document.getElementById("smsAccessSecret").value = "";
+      document.getElementById("smsSign").value = "";
+      document.getElementById("smsTemplate").value = "";
+      document.getElementById("smsAccessKeyHint").textContent = d.aliyun_access_key ? "当前值: " + d.aliyun_access_key : "";
+      document.getElementById("smsAccessSecretHint").textContent = d.aliyun_access_secret ? "当前值: " + d.aliyun_access_secret : "";
+      document.getElementById("smsSignHint").textContent = d.aliyun_sms_sign ? "当前值: " + d.aliyun_sms_sign : "";
+      document.getElementById("smsTemplateHint").textContent = d.aliyun_sms_template ? "当前值: " + d.aliyun_sms_template : "";
+      var badge = document.getElementById("smsStatusBadge");
+      if (d.configured || d.sms_configured) {
+        badge.className = "badge badge-green"; badge.textContent = "已配置";
+      } else {
+        badge.className = "badge badge-red"; badge.textContent = "未配置";
+      }
+    } catch (e) { /* handled */ }
+  }
+
+  window.saveSmsConfig = async function() {
+    var ak = document.getElementById("smsAccessKey").value.trim();
+    var as = document.getElementById("smsAccessSecret").value.trim();
+    var sign = document.getElementById("smsSign").value.trim();
+    var tpl = document.getElementById("smsTemplate").value.trim();
+    if (!ak && !as && !sign && !tpl) { toast("请填写至少一个字段", "error"); return; }
+    var body = {};
+    if (ak) body.aliyun_access_key = ak;
+    if (as) body.aliyun_access_secret = as;
+    if (sign) body.aliyun_sms_sign = sign;
+    if (tpl) body.aliyun_sms_template = tpl;
+    try {
+      await api("POST", "/api/admin/config/sms", body);
+      toast("短信配置已保存");
+      loadSmsConfig();
+    } catch (e) {
+      toast(e.message, "error");
+    }
+  };
+
+  /* ========== Change Password ========== */
+
+  window.openChangePwd = function() {
+    document.getElementById("oldPassword").value = "";
+    document.getElementById("newPassword").value = "";
+    document.getElementById("confirmPassword").value = "";
+    document.getElementById("changePwdModal").classList.add("open");
+  };
+
+  window.closeChangePwd = function() {
+    document.getElementById("changePwdModal").classList.remove("open");
+  };
+
+  window.doChangePwd = async function() {
+    var oldPwd = document.getElementById("oldPassword").value.trim();
+    var newPwd = document.getElementById("newPassword").value.trim();
+    var confirm = document.getElementById("confirmPassword").value.trim();
+    if (!oldPwd || !newPwd) { toast("请填写所有字段", "error"); return; }
+    if (newPwd !== confirm) { toast("两次输入的新密码不一致", "error"); return; }
+    if (newPwd.length < 6) { toast("新密码至少6个字符", "error"); return; }
+    try {
+      await api("POST", "/api/admin/change-password", { old_password: oldPwd, new_password: newPwd });
+      toast("密码修改成功");
+      closeChangePwd();
+    } catch (e) {
+      toast(e.message, "error");
+    }
+  };
+
+  // Close modal on overlay click
+  document.getElementById("changePwdModal").addEventListener("click", function(e) {
+    if (e.target === this) closeChangePwd();
+  });
+
+  /* ========== Boot ========== */
+
+  if (getToken()) {
+    showApp();
+  }
+
+})();
+</script>
+</body>
+</html>
