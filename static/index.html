@@ -313,6 +313,9 @@ body {
   min-width: 100px; min-height: 48px;
 }
 .send-code-btn:disabled { background: #94a3b8; cursor: not-allowed; }
+.login-tabs { display: flex; gap: 0; margin-bottom: 20px; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
+.login-tab { flex: 1; padding: 12px; border: none; background: #fff; font-size: 15px; cursor: pointer; color: var(--text-secondary); font-weight: 500; }
+.login-tab.active { background: var(--primary); color: #fff; }
 </style>
 </head>
 <body>
@@ -322,18 +325,38 @@ body {
   <div class="login-box">
     <h1>小安健康档案</h1>
     <p class="sub">手机号登录，记录全家健康</p>
-    <div class="form-group">
-      <label>手机号</label>
-      <div class="phone-row">
-        <input type="tel" id="loginPhone" placeholder="输入手机号" maxlength="11">
-        <button class="send-code-btn" id="sendCodeBtn" onclick="sendSmsCode()">获取验证码</button>
+    <div class="login-tabs">
+      <button class="login-tab active" id="tabPassword" onclick="switchLoginMode('password')">密码登录</button>
+      <button class="login-tab" id="tabSms" onclick="switchLoginMode('sms')">验证码登录</button>
+    </div>
+    <!-- Password mode -->
+    <div id="loginModePassword">
+      <div class="form-group">
+        <label>手机号</label>
+        <input type="tel" id="loginPhonePw" placeholder="输入手机号" maxlength="11">
       </div>
+      <div class="form-group" style="margin-top:14px;">
+        <label>密码</label>
+        <input type="password" id="loginPassword" placeholder="输入密码" maxlength="32">
+      </div>
+      <p style="font-size:12px;color:var(--text-secondary);margin-top:6px;">新手机号将自动注册，默认密码 123456</p>
+      <button class="btn-primary" style="margin-top:16px;" onclick="doLoginPassword()">登录</button>
     </div>
-    <div class="form-group" id="codeGroup" style="display:none;margin-top:14px;">
-      <label>验证码</label>
-      <input type="tel" id="loginCode" placeholder="输入6位验证码" maxlength="6">
+    <!-- SMS mode -->
+    <div id="loginModeSms" style="display:none;">
+      <div class="form-group">
+        <label>手机号</label>
+        <div class="phone-row">
+          <input type="tel" id="loginPhone" placeholder="输入手机号" maxlength="11">
+          <button class="send-code-btn" id="sendCodeBtn" onclick="sendSmsCode()">获取验证码</button>
+        </div>
+      </div>
+      <div class="form-group" id="codeGroup" style="display:none;margin-top:14px;">
+        <label>验证码</label>
+        <input type="tel" id="loginCode" placeholder="输入6位验证码" maxlength="6">
+      </div>
+      <button class="btn-primary" id="loginBtn" style="margin-top:16px;display:none;" onclick="doLogin()">登录</button>
     </div>
-    <button class="btn-primary" id="loginBtn" style="margin-top:16px;display:none;" onclick="doLogin()">登录</button>
   </div>
 </div>
 
@@ -511,6 +534,31 @@ function authFetch(url, opts = {}) {
 }
 
 /* ===== LOGIN ===== */
+function switchLoginMode(mode) {
+  document.getElementById("loginModePassword").style.display = mode === "password" ? "block" : "none";
+  document.getElementById("loginModeSms").style.display = mode === "sms" ? "block" : "none";
+  document.getElementById("tabPassword").className = "login-tab" + (mode === "password" ? " active" : "");
+  document.getElementById("tabSms").className = "login-tab" + (mode === "sms" ? " active" : "");
+}
+
+async function doLoginPassword() {
+  const phone = document.getElementById("loginPhonePw").value.trim();
+  const password = document.getElementById("loginPassword").value;
+  if (!/^1[3-9]\d{9}$/.test(phone)) { alert("请输入正确的手机号"); return; }
+  if (!password) { alert("请输入密码"); return; }
+  const fd = new FormData(); fd.append("phone", phone); fd.append("password", password);
+  try {
+    const res = await fetch("/api/auth/login-password", { method: "POST", body: fd });
+    const data = await res.json();
+    if (!res.ok) { alert(data.detail || "登录失败"); return; }
+    authToken = data.token;
+    currentUser = data.user;
+    localStorage.setItem("auth_token", authToken);
+    document.getElementById("loginPage").style.display = "none";
+    initApp();
+  } catch (err) { alert("登录失败: " + err.message); }
+}
+
 async function sendSmsCode() {
   const phone = document.getElementById("loginPhone").value.trim();
   if (!/^1[3-9]\d{9}$/.test(phone)) { alert("请输入正确的手机号"); return; }

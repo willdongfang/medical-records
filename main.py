@@ -41,11 +41,15 @@ class AppConfig(Base):
     value = Column(Text, default="")
 
 
+DEFAULT_PASSWORD_HASH = hashlib.sha256("123456".encode()).hexdigest()
+
+
 class User(Base):
     __tablename__ = "users"
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     phone = Column(String(20), unique=True, nullable=False, index=True)
     name = Column(String(50), default="")
+    password_hash = Column(String(128), default=DEFAULT_PASSWORD_HASH)
     is_active = Column(Integer, default=1)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     last_login = Column(DateTime, nullable=True)
@@ -119,6 +123,11 @@ def _migrate_db():
         with engine.begin() as conn:
             if "user_id" not in existing:
                 conn.execute(text("ALTER TABLE members ADD COLUMN user_id VARCHAR DEFAULT NULL"))
+    if insp.has_table("users"):
+        existing = {col["name"] for col in insp.get_columns("users")}
+        with engine.begin() as conn:
+            if "password_hash" not in existing:
+                conn.execute(text(f"ALTER TABLE users ADD COLUMN password_hash VARCHAR(128) DEFAULT '{DEFAULT_PASSWORD_HASH}'"))
     # Seed default admin password if not set
     if insp.has_table("app_config"):
         with engine.begin() as conn:
@@ -482,6 +491,45 @@ async def verify_code(phone: str = Form(...), code: str = Form(...)):
         db.add(token)
         db.commit()
 
+        return {
+            "token": token.token,
+            "user": {"id": user.id, "phone": user.phone, "name": user.name},
+            "is_new": is_new,
+        }
+    finally:
+        db.close()
+
+
+@app.post("/api/auth/login-password")
+async def login_password(phone: str = Form(...), password: str = Form(...)):
+    phone = phone.strip()
+    if not re.match(r"^1[3-9]\d{9}$", phone):
+        raise HTTPException(400, "手机号格式不正确")
+    pw_hash = hashlib.sha256(password.strip().encode()).hexdigest()
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.phone == phone).first()
+        is_new = False
+        if not user:
+            # Auto-create user with this password
+            user = User(phone=phone, name=phone[-4:] + "用户", password_hash=pw_hash)
+            db.add(user)
+            db.flush()
+            is_new = True
+            db.add(Member(user_id=user.id, name="我自己", relation="self", avatar_color="#2563eb", is_default=1))
+        else:
+            # Verify password
+            stored_hash = user.password_hash or DEFAULT_PASSWORD_HASH
+            if stored_hash != pw_hash:
+                raise HTTPException(400, "密码错误")
+            if not user.is_active:
+                raise HTTPException(403, "账号已被禁用")
+        user.last_login = datetime.now(timezone.utc)
+        token = AuthToken(
+            user_id=user.id, token_type="user",
+            expires_at=datetime.now(timezone.utc) + timedelta(days=30))
+        db.add(token)
+        db.commit()
         return {
             "token": token.token,
             "user": {"id": user.id, "phone": user.phone, "name": user.name},
