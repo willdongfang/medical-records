@@ -5,390 +5,768 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<title>病历本</title>
+<title>小安健康档案</title>
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
+/* === RESET & ROOT === */
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 :root {
-  --primary: #2563eb; --primary-dark: #1d4ed8; --bg: #f0f2f5;
-  --card-bg: #fff; --text: #1a1a2e; --text-secondary: #64748b;
-  --border: #e2e8f0; --danger: #ef4444; --radius: 12px;
+  --primary: #2563eb; --primary-dark: #1d4ed8;
+  --bg: #f8fafc; --card-bg: #ffffff;
+  --text: #1e293b; --text-secondary: #64748b;
+  --success: #16a34a; --danger: #dc2626;
+  --border: #e2e8f0; --radius: 12px;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --nav-height: 60px;
+  --header-height: 56px;
 }
-body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+html { font-size: 18px; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
   background: var(--bg); color: var(--text); min-height: 100vh;
-  padding-top: calc(60px + var(--safe-top)); padding-bottom: var(--safe-bottom); }
-header { position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-  background: var(--primary); color: #fff; display: flex; align-items: center;
-  justify-content: space-between; padding: 0 16px;
-  height: calc(60px + var(--safe-top)); padding-top: var(--safe-top); }
-header h1 { font-size: 18px; font-weight: 600; }
-#btnUpload { background: rgba(255,255,255,0.2); border: none; color: #fff;
-  padding: 8px 16px; border-radius: 20px; font-size: 14px; cursor: pointer;
-  font-weight: 500; }
-#btnUpload:active { background: rgba(255,255,255,0.35); }
+  padding-top: calc(var(--header-height) + var(--safe-top));
+  padding-bottom: calc(var(--nav-height) + var(--safe-bottom));
+  line-height: 1.6; -webkit-font-smoothing: antialiased;
+}
 
-#categoryNav { display: flex; gap: 8px; padding: 12px 16px; overflow-x: auto;
-  -webkit-overflow-scrolling: touch; white-space: nowrap; background: var(--card-bg);
-  border-bottom: 1px solid var(--border); }
-#categoryNav::-webkit-scrollbar { display: none; }
-.cat-btn { border: 1px solid var(--border); background: var(--card-bg); color: var(--text-secondary);
-  padding: 6px 14px; border-radius: 20px; font-size: 13px; cursor: pointer;
-  flex-shrink: 0; transition: all .2s; }
-.cat-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+/* === HEADER === */
+.app-header {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  background: var(--primary); color: #fff;
+  height: calc(var(--header-height) + var(--safe-top));
+  padding-top: var(--safe-top);
+  display: flex; align-items: center; justify-content: center;
+}
+.app-header h1 { font-size: 20px; font-weight: 600; letter-spacing: 1px; }
 
-main { padding: 12px; }
-.record-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-.record-card { background: var(--card-bg); border-radius: var(--radius); overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08); cursor: pointer; transition: transform .15s; }
-.record-card:active { transform: scale(0.97); }
-.record-card img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; background: #f1f5f9; }
-.record-info { padding: 8px 10px; }
-.record-info .title { font-size: 13px; font-weight: 500; white-space: nowrap;
-  overflow: hidden; text-overflow: ellipsis; }
-.record-info .meta { font-size: 11px; color: var(--text-secondary); margin-top: 3px;
-  display: flex; justify-content: space-between; }
-.cat-tag { background: #eff6ff; color: var(--primary); padding: 1px 6px;
-  border-radius: 4px; font-size: 10px; }
+/* === BOTTOM NAV === */
+.bottom-nav {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+  background: var(--card-bg); border-top: 1px solid var(--border);
+  height: calc(var(--nav-height) + var(--safe-bottom));
+  padding-bottom: var(--safe-bottom);
+  display: flex; align-items: center; justify-content: space-around;
+}
+.nav-item {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  flex: 1; height: 100%; border: none; background: none;
+  color: var(--text-secondary); font-size: 12px; cursor: pointer;
+  transition: color .2s; gap: 2px; padding: 0;
+}
+.nav-item.active { color: var(--primary); }
+.nav-item svg { width: 26px; height: 26px; }
+.nav-item span { font-size: 12px; }
 
-.empty-state { text-align: center; padding: 60px 20px; color: var(--text-secondary); }
-.empty-icon { font-size: 48px; margin-bottom: 12px; }
-.empty-state .sub { font-size: 13px; margin-top: 6px; }
+/* === PAGES === */
+.page { display: none; padding: 12px 16px; }
+.page.active { display: block; }
 
-/* Modal */
-.modal { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.5);
-  display: flex; align-items: flex-end; justify-content: center; }
-.modal-content { background: var(--card-bg); border-radius: 16px 16px 0 0;
-  width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto;
-  padding: 20px 16px calc(20px + var(--safe-bottom)); }
-.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-.modal-header h2 { font-size: 17px; }
-.close-btn { background: none; border: none; font-size: 28px; color: var(--text-secondary);
-  cursor: pointer; line-height: 1; padding: 0 4px; }
-.close-btn.light { color: rgba(255,255,255,0.8); font-size: 32px; }
+/* === MEMBER SELECTOR (Home) === */
+.member-strip {
+  display: flex; gap: 12px; padding: 12px 0; overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.member-strip::-webkit-scrollbar { display: none; }
+.member-chip {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  flex-shrink: 0; cursor: pointer; min-width: 60px;
+}
+.member-avatar {
+  width: 48px; height: 48px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 18px; font-weight: 600;
+  border: 3px solid transparent; transition: border-color .2s;
+}
+.member-chip.active .member-avatar { border-color: var(--primary); }
+.member-chip-name { font-size: 13px; color: var(--text-secondary); white-space: nowrap; }
+.member-chip.active .member-chip-name { color: var(--primary); font-weight: 600; }
 
+/* === RECORD CARDS === */
+.section-title { font-size: 16px; font-weight: 600; margin: 16px 0 10px; color: var(--text); }
+.record-list { display: flex; flex-direction: column; gap: 10px; }
+.record-card {
+  background: var(--card-bg); border-radius: var(--radius); padding: 14px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06); cursor: pointer;
+  display: flex; gap: 12px; align-items: center; transition: transform .1s;
+  min-height: 56px;
+}
+.record-card:active { transform: scale(0.98); }
+.record-thumb { width: 56px; height: 56px; border-radius: 8px; object-fit: cover; flex-shrink: 0; background: #f1f5f9; }
+.record-body { flex: 1; min-width: 0; }
+.record-title { font-size: 16px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.record-meta { font-size: 13px; color: var(--text-secondary); margin-top: 2px; display: flex; gap: 8px; align-items: center; }
+.cat-tag { background: #eff6ff; color: var(--primary); padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+.ocr-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.ocr-dot.done { background: var(--success); }
+.ocr-dot.pending, .ocr-dot.processing { background: #f59e0b; }
+.ocr-dot.failed { background: var(--danger); }
+
+.empty-state { text-align: center; padding: 48px 20px; color: var(--text-secondary); }
+.empty-icon { font-size: 56px; margin-bottom: 12px; }
+.empty-state p { font-size: 16px; }
+.empty-state .sub { font-size: 14px; margin-top: 8px; }
+
+/* === CAMERA PAGE === */
+.camera-page { display: flex; flex-direction: column; align-items: center; padding: 24px 16px; }
+.camera-main-btn {
+  width: 100%; max-width: 360px; height: 200px; border-radius: 20px;
+  background: linear-gradient(135deg, var(--primary), #3b82f6);
+  color: #fff; border: none; cursor: pointer; display: flex;
+  flex-direction: column; align-items: center; justify-content: center;
+  gap: 12px; font-size: 20px; font-weight: 600; margin-top: 24px;
+  box-shadow: 0 4px 20px rgba(37,99,235,0.3); transition: transform .15s;
+}
+.camera-main-btn:active { transform: scale(0.97); }
+.camera-main-btn svg { width: 56px; height: 56px; }
+.camera-hint { font-size: 14px; color: var(--text-secondary); margin-top: 16px; text-align: center; }
+
+/* Upload form (step 2) */
+.upload-form { width: 100%; max-width: 400px; margin-top: 0; }
+.upload-preview { width: 100%; border-radius: var(--radius); margin-bottom: 16px; max-height: 300px; object-fit: contain; background: #f1f5f9; }
 .form-group { margin-bottom: 14px; }
-.form-group label { display: block; font-size: 13px; font-weight: 500;
-  margin-bottom: 6px; color: var(--text-secondary); }
-.required { color: var(--danger); }
+.form-group label { display: block; font-size: 15px; font-weight: 500; margin-bottom: 6px; color: var(--text-secondary); }
 .form-group input, .form-group select, .form-group textarea {
-  width: 100%; padding: 10px 12px; border: 1px solid var(--border);
-  border-radius: 8px; font-size: 15px; background: #fafbfc; }
+  width: 100%; padding: 14px 16px; border: 1px solid var(--border);
+  border-radius: 10px; font-size: 16px; background: #fff;
+}
 .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
-  outline: none; border-color: var(--primary); background: #fff; }
+  outline: none; border-color: var(--primary);
+}
+.member-select-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.member-select-btn {
+  padding: 10px 18px; border-radius: 24px; border: 2px solid var(--border);
+  background: #fff; font-size: 15px; cursor: pointer; transition: all .2s;
+  min-height: 48px; display: flex; align-items: center; gap: 6px;
+}
+.member-select-btn.active { border-color: var(--primary); background: #eff6ff; color: var(--primary); font-weight: 600; }
 
-.image-upload-area { border: 2px dashed var(--border); border-radius: var(--radius);
-  text-align: center; padding: 24px; cursor: pointer; background: #fafbfc; }
-.image-upload-area:active { background: #f1f5f9; }
-.upload-icon { font-size: 36px; margin-bottom: 6px; }
-.image-upload-area p { font-size: 13px; color: var(--text-secondary); }
-#imagePreview { max-width: 100%; max-height: 200px; border-radius: 8px; }
+.btn-primary {
+  width: 100%; padding: 16px; background: var(--primary); color: #fff;
+  border: none; border-radius: 12px; font-size: 18px; font-weight: 600;
+  cursor: pointer; min-height: 56px; transition: background .2s;
+}
+.btn-primary:active { background: var(--primary-dark); }
+.btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
+.btn-secondary {
+  width: 100%; padding: 14px; background: #fff; color: var(--text);
+  border: 1px solid var(--border); border-radius: 12px; font-size: 16px;
+  cursor: pointer; min-height: 48px; margin-top: 10px;
+}
+.btn-secondary:active { background: #f1f5f9; }
+.btn-danger {
+  width: 100%; padding: 14px; background: #fff; color: var(--danger);
+  border: 1px solid var(--danger); border-radius: 12px; font-size: 16px;
+  cursor: pointer; min-height: 48px; margin-top: 10px;
+}
+.btn-danger:active { background: #fef2f2; }
 
-.submit-btn { width: 100%; padding: 13px; background: var(--primary); color: #fff;
-  border: none; border-radius: 10px; font-size: 16px; font-weight: 600;
-  cursor: pointer; margin-top: 6px; }
-.submit-btn:active { background: var(--primary-dark); }
-.submit-btn:disabled { background: #94a3b8; cursor: not-allowed; }
+/* === PROFILE PAGE === */
+.profile-section { margin-bottom: 24px; }
+.profile-section-title { font-size: 16px; font-weight: 600; margin-bottom: 10px; color: var(--text); }
+.member-manage-card {
+  background: var(--card-bg); border-radius: var(--radius); padding: 14px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06); display: flex; align-items: center;
+  gap: 12px; margin-bottom: 8px; min-height: 56px;
+}
+.member-manage-avatar {
+  width: 44px; height: 44px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 16px; font-weight: 600; flex-shrink: 0;
+}
+.member-manage-info { flex: 1; }
+.member-manage-name { font-size: 16px; font-weight: 500; }
+.member-manage-meta { font-size: 13px; color: var(--text-secondary); }
+.member-manage-actions { display: flex; gap: 8px; }
+.icon-btn {
+  width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border);
+  background: #fff; cursor: pointer; display: flex; align-items: center;
+  justify-content: center; font-size: 18px; color: var(--text-secondary);
+}
+.icon-btn:active { background: #f1f5f9; }
+.icon-btn.danger { color: var(--danger); border-color: #fecaca; }
+.add-member-btn {
+  width: 100%; padding: 14px; background: #fff; border: 2px dashed var(--border);
+  border-radius: var(--radius); font-size: 16px; color: var(--text-secondary);
+  cursor: pointer; text-align: center; min-height: 56px;
+}
+.add-member-btn:active { background: #f8fafc; }
 
-/* Viewer */
-#viewerModal { flex-direction: column; background: var(--card-bg); align-items: center; }
-.viewer-header { width: 100%; padding: 12px 16px; padding-top: calc(12px + var(--safe-top));
+.settings-card {
+  background: var(--card-bg); border-radius: var(--radius); padding: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.settings-row {
   display: flex; justify-content: space-between; align-items: center;
-  color: var(--text); font-size: 15px; font-weight: 600; flex-shrink: 0;
-  border-bottom: 1px solid var(--border); background: var(--card-bg); }
-.viewer-tabs { width: 100%; display: flex; background: var(--card-bg);
-  border-bottom: 1px solid var(--border); flex-shrink: 0; }
-.vtab { flex: 1; padding: 10px; border: none; background: none; font-size: 14px;
-  color: var(--text-secondary); cursor: pointer; position: relative; font-weight: 500; }
+  padding: 12px 0; border-bottom: 1px solid var(--border); min-height: 48px;
+  cursor: pointer;
+}
+.settings-row:last-child { border-bottom: none; }
+.settings-label { font-size: 16px; }
+.settings-value { font-size: 14px; color: var(--text-secondary); display: flex; align-items: center; gap: 4px; }
+.status-badge { padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 500; }
+.status-badge.on { background: #dcfce7; color: #166534; }
+.status-badge.off { background: #fef2f2; color: #991b1b; }
+
+/* === MODALS === */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.5);
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.modal-sheet {
+  background: var(--card-bg); border-radius: 20px 20px 0 0;
+  width: 100%; max-width: 500px; max-height: 85vh; overflow-y: auto;
+  padding: 20px 16px calc(20px + var(--safe-bottom));
+}
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.modal-header h2 { font-size: 18px; font-weight: 600; }
+.close-btn { background: none; border: none; font-size: 28px; color: var(--text-secondary); cursor: pointer; padding: 0 4px; }
+
+/* === VIEWER === */
+.viewer-overlay {
+  position: fixed; inset: 0; z-index: 300; background: var(--bg);
+  display: flex; flex-direction: column;
+}
+.viewer-header {
+  padding: 12px 16px; padding-top: calc(12px + var(--safe-top));
+  display: flex; justify-content: space-between; align-items: center;
+  border-bottom: 1px solid var(--border); background: var(--card-bg); flex-shrink: 0;
+}
+.viewer-header-title { font-size: 16px; font-weight: 600; }
+.viewer-tabs { display: flex; background: var(--card-bg); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.vtab {
+  flex: 1; padding: 12px; border: none; background: none; font-size: 15px;
+  color: var(--text-secondary); cursor: pointer; position: relative; font-weight: 500;
+  min-height: 48px;
+}
 .vtab.active { color: var(--primary); }
-.vtab.active::after { content: ""; position: absolute; bottom: 0; left: 20%; right: 20%;
-  height: 2px; background: var(--primary); border-radius: 1px; }
-.viewer-body { flex: 1; display: flex; align-items: center; justify-content: center;
-  overflow: auto; width: 100%; padding: 8px; background: #f8fafc; }
-#viewerImage { max-width: 100%; max-height: 100%; object-fit: contain; }
-.viewer-footer { width: 100%; padding: 12px 16px; padding-bottom: calc(12px + var(--safe-bottom));
+.vtab.active::after {
+  content: ""; position: absolute; bottom: 0; left: 20%; right: 20%;
+  height: 3px; background: var(--primary); border-radius: 2px;
+}
+.viewer-body {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  overflow: auto; padding: 12px; background: #f8fafc;
+}
+.viewer-body img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.viewer-footer {
+  padding: 12px 16px; padding-bottom: calc(12px + var(--safe-bottom));
   display: flex; justify-content: space-between; align-items: center;
-  color: var(--text-secondary); font-size: 12px; flex-shrink: 0;
-  border-top: 1px solid var(--border); background: var(--card-bg); }
+  border-top: 1px solid var(--border); background: var(--card-bg); flex-shrink: 0;
+}
+.viewer-footer-meta { font-size: 13px; color: var(--text-secondary); flex: 1; }
 .viewer-actions { display: flex; gap: 8px; }
-.delete-btn { background: var(--danger); color: #fff; border: none; padding: 8px 18px;
-  border-radius: 8px; font-size: 13px; cursor: pointer; }
-.reocr-btn { background: var(--primary); color: #fff; border: none; padding: 8px 14px;
-  border-radius: 8px; font-size: 13px; cursor: pointer; }
+.viewer-actions button {
+  padding: 10px 18px; border-radius: 10px; font-size: 14px;
+  border: none; cursor: pointer; min-height: 44px; font-weight: 500;
+}
+.btn-reocr { background: var(--primary); color: #fff; }
+.btn-delete { background: var(--danger); color: #fff; }
 
-/* OCR content */
-.ocr-text-content { width: 100%; max-width: 500px; padding: 16px; font-size: 14px;
-  line-height: 1.8; white-space: pre-wrap; word-break: break-all; color: var(--text);
-  align-self: flex-start; }
-.ocr-text-content .ocr-placeholder { text-align: center; color: var(--text-secondary);
-  padding: 40px 0; }
-.ocr-table-content { width: 100%; padding: 12px; overflow-x: auto; align-self: flex-start; }
-.ocr-table-content table { width: 100%; border-collapse: collapse; font-size: 13px;
-  background: var(--card-bg); border-radius: 8px; overflow: hidden; }
-.ocr-table-content th, .ocr-table-content td { border: 1px solid var(--border);
-  padding: 8px 10px; text-align: left; }
-.ocr-table-content tr:first-child th, .ocr-table-content tr:first-child td {
-  background: #f1f5f9; font-weight: 600; }
-.ocr-table-content .no-table { text-align: center; color: var(--text-secondary);
-  padding: 40px 0; }
-.ocr-table-content + .ocr-table-content { margin-top: 16px; }
+.ocr-text-content {
+  width: 100%; max-width: 500px; padding: 16px; font-size: 15px;
+  line-height: 1.8; white-space: pre-wrap; word-break: break-all;
+  align-self: flex-start;
+}
+.ocr-placeholder { text-align: center; color: var(--text-secondary); padding: 40px 0; font-size: 15px; }
+.ocr-table-wrap { width: 100%; padding: 12px; overflow-x: auto; align-self: flex-start; }
+.ocr-table-wrap table {
+  width: 100%; border-collapse: collapse; font-size: 14px;
+  background: var(--card-bg); border-radius: 8px; overflow: hidden;
+}
+.ocr-table-wrap th, .ocr-table-wrap td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; }
+.ocr-table-wrap tr:first-child th, .ocr-table-wrap tr:first-child td { background: #f1f5f9; font-weight: 600; }
 
-.loading-overlay { position: fixed; inset: 0; z-index: 999; background: rgba(255,255,255,0.85);
-  display: flex; flex-direction: column; align-items: center; justify-content: center; }
-.spinner { width: 36px; height: 36px; border: 3px solid var(--border);
-  border-top-color: var(--primary); border-radius: 50%; animation: spin .7s linear infinite; }
+/* === LOADING === */
+.loading-overlay {
+  position: fixed; inset: 0; z-index: 999; background: rgba(255,255,255,0.9);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.spinner {
+  width: 40px; height: 40px; border: 3px solid var(--border);
+  border-top-color: var(--primary); border-radius: 50%; animation: spin .7s linear infinite;
+}
 @keyframes spin { to { transform: rotate(360deg); } }
-.loading-overlay p { margin-top: 10px; font-size: 14px; color: var(--text-secondary); }
+.loading-overlay p { margin-top: 12px; font-size: 16px; color: var(--text-secondary); }
 
-@media(min-width: 500px) {
-  .record-grid { grid-template-columns: repeat(3, 1fr); }
-  .modal-content { border-radius: 16px; margin-bottom: 20px; }
+/* === RESPONSIVE === */
+@media (min-width: 500px) {
+  body { max-width: 480px; margin: 0 auto; }
+  .bottom-nav { max-width: 480px; left: 50%; transform: translateX(-50%); }
+  .app-header { max-width: 480px; left: 50%; transform: translateX(-50%); }
 }
 </style>
 </head>
 <body>
 
 <!-- Header -->
-<header id="appHeader">
-  <h1>病历本</h1>
-  <div style="display:flex;gap:8px;align-items:center;">
-    <button id="btnSettings" onclick="showSettings()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;padding:8px 12px;border-radius:20px;font-size:14px;cursor:pointer;">设置</button>
-    <button id="btnUpload" onclick="showUploadModal()">+ 上传</button>
-  </div>
+<header class="app-header">
+  <h1>小安健康档案</h1>
 </header>
 
-<!-- Category Filter -->
-<nav id="categoryNav">
-  <button class="cat-btn active" data-cat="">全部</button>
-</nav>
+<!-- ===== PAGE: HOME ===== -->
+<div id="pageHome" class="page active">
+  <div id="memberStrip" class="member-strip"></div>
+  <div id="categoryNav" style="display:flex;gap:8px;overflow-x:auto;padding:4px 0 12px;-webkit-overflow-scrolling:touch;"></div>
+  <div id="recordsList" class="record-list"></div>
+</div>
 
-<!-- Records List -->
-<main id="recordsList">
-  <div id="emptyState" class="empty-state">
-    <div class="empty-icon">📋</div>
-    <p>还没有病历记录</p>
-    <p class="sub">点击右上角「+ 上传」添加第一条记录</p>
+<!-- ===== PAGE: CAMERA ===== -->
+<div id="pageCamera" class="page">
+  <!-- Step 1: Take photo -->
+  <div id="cameraStep1" class="camera-page">
+    <button class="camera-main-btn" onclick="triggerCamera()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"/><path d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z"/></svg>
+      拍照上传
+    </button>
+    <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none" onchange="onPhotoSelected(this)">
+    <p class="camera-hint">点击上方按钮拍照，或从相册选择检查单照片</p>
+    <button class="btn-secondary" style="max-width:360px;margin-top:8px;" onclick="triggerAlbum()">从相册选择</button>
+    <input type="file" id="albumInput" accept="image/*" style="display:none" onchange="onPhotoSelected(this)">
   </div>
-</main>
 
-<!-- Upload Modal -->
-<div id="uploadModal" class="modal" style="display:none;">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h2>上传病历</h2>
-      <button class="close-btn" onclick="hideUploadModal()">&times;</button>
-    </div>
-    <form id="uploadForm" onsubmit="submitRecord(event)">
+  <!-- Step 2: Preview & Save -->
+  <div id="cameraStep2" class="camera-page" style="display:none;">
+    <div class="upload-form">
+      <img id="uploadPreview" class="upload-preview">
       <div class="form-group">
-        <label>拍照 / 选择图片 <span class="required">*</span></label>
-        <div id="imagePreviewArea" class="image-upload-area" onclick="document.getElementById('imageInput').click()">
-          <div id="uploadPlaceholder">
-            <div class="upload-icon">📷</div>
-            <p>点击拍照或选择图片</p>
-          </div>
-          <img id="imagePreview" style="display:none;">
-        </div>
-        <input type="file" id="imageInput" accept="image/*" capture="environment" onchange="previewImage(this)" style="display:none;">
-      </div>
-      <div class="form-group">
-        <label>标题 <span class="required">*</span></label>
-        <input type="text" id="titleInput" placeholder="例：血常规检查" required>
+        <label>选择成员</label>
+        <div id="uploadMemberSelect" class="member-select-row"></div>
       </div>
       <div class="form-group">
         <label>分类</label>
-        <select id="categorySelect"></select>
+        <select id="uploadCategory"></select>
       </div>
       <div class="form-group">
-        <label>备注</label>
-        <textarea id="noteInput" rows="2" placeholder="可选备注信息"></textarea>
+        <label>标题（可选，留空自动生成）</label>
+        <input type="text" id="uploadTitle" placeholder="自动识别">
       </div>
-      <button type="submit" id="submitBtn" class="submit-btn">上传保存</button>
-    </form>
+      <div class="form-group">
+        <label>备注（可选）</label>
+        <textarea id="uploadNote" rows="2" placeholder="补充说明"></textarea>
+      </div>
+      <button class="btn-primary" id="uploadSaveBtn" onclick="submitUpload()">保存</button>
+      <button class="btn-secondary" onclick="resetCamera()">重新拍照</button>
+    </div>
   </div>
 </div>
 
-<!-- Image Viewer Modal -->
-<div id="viewerModal" class="modal" style="display:none;">
+<!-- ===== PAGE: PROFILE ===== -->
+<div id="pageProfile" class="page">
+  <div class="profile-section">
+    <div class="profile-section-title">家庭成员</div>
+    <div id="memberManageList"></div>
+    <button class="add-member-btn" onclick="showAddMember()">+ 添加成员</button>
+  </div>
+  <div class="profile-section">
+    <div class="profile-section-title">设置</div>
+    <div class="settings-card">
+      <div class="settings-row" onclick="showOcrSettings()">
+        <span class="settings-label">OCR 文字识别</span>
+        <span class="settings-value"><span id="ocrStatusBadge" class="status-badge off">未配置</span> ›</span>
+      </div>
+    </div>
+  </div>
+  <p style="text-align:center;font-size:13px;color:var(--text-secondary);margin-top:32px;">小安健康档案 v1.0.0-alpha</p>
+</div>
+
+<!-- ===== VIEWER MODAL ===== -->
+<div id="viewerModal" class="viewer-overlay" style="display:none;">
   <div class="viewer-header">
-    <span id="viewerTitle"></span>
+    <span id="viewerTitle" class="viewer-header-title"></span>
     <button class="close-btn" onclick="hideViewer()">&times;</button>
   </div>
   <div class="viewer-tabs">
-    <button class="vtab active" onclick="switchViewerTab(this, 'image')">原图</button>
-    <button class="vtab" onclick="switchViewerTab(this, 'text')">文字</button>
-    <button class="vtab" onclick="switchViewerTab(this, 'table')">表格</button>
+    <button class="vtab active" onclick="switchViewerTab(this,'image')">原图</button>
+    <button class="vtab" onclick="switchViewerTab(this,'text')">文字</button>
+    <button class="vtab" onclick="switchViewerTab(this,'table')">表格</button>
   </div>
-  <div class="viewer-body" id="viewerBodyImage">
-    <img id="viewerImage">
-  </div>
-  <div class="viewer-body" id="viewerBodyText" style="display:none;">
-    <div id="ocrTextContent" class="ocr-text-content"></div>
-  </div>
-  <div class="viewer-body" id="viewerBodyTable" style="display:none;">
-    <div id="ocrTableContent" class="ocr-table-content"></div>
-  </div>
+  <div class="viewer-body" id="viewerBodyImage"><img id="viewerImage"></div>
+  <div class="viewer-body" id="viewerBodyText" style="display:none;"><div id="ocrTextContent" class="ocr-text-content"></div></div>
+  <div class="viewer-body" id="viewerBodyTable" style="display:none;"><div id="ocrTableContent" class="ocr-table-wrap"></div></div>
   <div class="viewer-footer">
-    <span id="viewerMeta"></span>
+    <span id="viewerMeta" class="viewer-footer-meta"></span>
     <div class="viewer-actions">
-      <button class="reocr-btn" id="viewerReocrBtn" style="display:none;" onclick="reocrRecord()">重新识别</button>
-      <button class="delete-btn" id="viewerDeleteBtn">删除</button>
+      <button class="btn-reocr" id="viewerReocrBtn" style="display:none;" onclick="reocrRecord()">重新识别</button>
+      <button class="btn-delete" id="viewerDeleteBtn">删除</button>
     </div>
   </div>
 </div>
 
-<!-- Settings Modal -->
-<div id="settingsModal" class="modal" style="display:none;">
-  <div class="modal-content">
+<!-- ===== ADD MEMBER MODAL ===== -->
+<div id="addMemberModal" class="modal-overlay" style="display:none;">
+  <div class="modal-sheet">
     <div class="modal-header">
-      <h2>OCR 设置</h2>
-      <button class="close-btn" onclick="hideSettings()">&times;</button>
+      <h2 id="memberModalTitle">添加成员</h2>
+      <button class="close-btn" onclick="hideAddMember()">&times;</button>
     </div>
-    <div id="ocrStatusBanner" style="padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:14px;"></div>
-    <form id="ocrSettingsForm" onsubmit="saveOcrSettings(event)">
+    <form onsubmit="saveMember(event)">
       <div class="form-group">
-        <label>百度OCR API Key <span class="required">*</span></label>
-        <input type="text" id="ocrApiKey" placeholder="输入 API Key" autocomplete="off">
+        <label>姓名</label>
+        <input type="text" id="memberNameInput" placeholder="例：爸爸" required>
       </div>
       <div class="form-group">
-        <label>百度OCR Secret Key <span class="required">*</span></label>
-        <input type="password" id="ocrSecretKey" placeholder="输入 Secret Key" autocomplete="off">
+        <label>关系</label>
+        <select id="memberRelationSelect"></select>
       </div>
-      <button type="submit" class="submit-btn">保存配置</button>
-      <button type="button" class="submit-btn" style="background:#64748b;margin-top:8px;" onclick="testOcrConnection()">测试连接</button>
+      <div class="form-group">
+        <label>颜色标识</label>
+        <div id="colorPicker" style="display:flex;gap:10px;flex-wrap:wrap;"></div>
+      </div>
+      <input type="hidden" id="memberEditId" value="">
+      <button type="submit" class="btn-primary">保存</button>
     </form>
-    <div id="ocrTestResult" style="margin-top:12px;padding:10px 14px;border-radius:8px;font-size:13px;display:none;"></div>
+  </div>
+</div>
+
+<!-- ===== OCR SETTINGS MODAL ===== -->
+<div id="ocrSettingsModal" class="modal-overlay" style="display:none;">
+  <div class="modal-sheet">
+    <div class="modal-header">
+      <h2>OCR 文字识别设置</h2>
+      <button class="close-btn" onclick="hideOcrSettings()">&times;</button>
+    </div>
+    <div id="ocrSettingsBanner" style="padding:12px 14px;border-radius:10px;font-size:14px;margin-bottom:14px;"></div>
+    <form onsubmit="saveOcrSettings(event)">
+      <div class="form-group">
+        <label>百度OCR API Key</label>
+        <input type="text" id="ocrApiKeyInput" placeholder="输入 API Key" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label>百度OCR Secret Key</label>
+        <input type="password" id="ocrSecretKeyInput" placeholder="输入 Secret Key" autocomplete="off">
+      </div>
+      <button type="submit" class="btn-primary">保存配置</button>
+      <button type="button" class="btn-secondary" onclick="testOcrConnection()">测试连接</button>
+    </form>
+    <div id="ocrTestResult" style="margin-top:12px;padding:12px;border-radius:10px;font-size:14px;display:none;"></div>
   </div>
 </div>
 
 <!-- Loading Overlay -->
 <div id="loadingOverlay" class="loading-overlay" style="display:none;">
   <div class="spinner"></div>
-  <p>上传中...</p>
+  <p id="loadingText">处理中...</p>
 </div>
 
+<!-- ===== BOTTOM NAV ===== -->
+<nav class="bottom-nav">
+  <button class="nav-item active" data-tab="home" onclick="switchTab('home')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955a1.126 1.126 0 011.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/></svg>
+    <span>首页</span>
+  </button>
+  <button class="nav-item" data-tab="camera" onclick="switchTab('camera')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z"/></svg>
+    <span>拍照</span>
+  </button>
+  <button class="nav-item" data-tab="profile" onclick="switchTab('profile')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
+    <span>我的</span>
+  </button>
+</nav>
+
 <script>
+/* ===== STATE ===== */
 let categories = {};
+let relations = {};
+let members = [];
+let currentTab = "home";
+let currentMemberFilter = "";
 let currentCategory = "";
 let currentViewId = null;
+let selectedUploadMember = "";
+let selectedUploadFile = null;
+let selectedColor = "#2563eb";
+const COLORS = ["#2563eb","#16a34a","#dc2626","#9333ea","#ea580c","#0891b2","#4f46e5","#be185d"];
 
+/* ===== INIT ===== */
 async function init() {
-  const res = await fetch("/api/categories");
-  categories = await res.json();
+  const [catRes, relRes, memRes] = await Promise.all([
+    fetch("/api/categories"), fetch("/api/relations"), fetch("/api/members")
+  ]);
+  categories = await catRes.json();
+  relations = await relRes.json();
+  members = await memRes.json();
+
   renderCategoryNav();
+  renderMemberStrip();
+  renderMemberManageList();
+  loadRecords();
+  loadOcrStatus();
+
+  // Restore last member from localStorage
+  const lastMember = localStorage.getItem("lastMemberId");
+  if (lastMember && members.find(m => m.id === lastMember)) {
+    currentMemberFilter = lastMember;
+    renderMemberStrip();
+    loadRecords();
+  }
+}
+
+/* ===== NAVIGATION ===== */
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
+  const pageMap = { home: "pageHome", camera: "pageCamera", profile: "pageProfile" };
+  document.getElementById(pageMap[tab]).classList.add("active");
+  document.querySelector(`.nav-item[data-tab="${tab}"]`).classList.add("active");
+
+  if (tab === "camera") { resetCamera(); renderUploadMemberSelect(); }
+  if (tab === "profile") { refreshMembers(); loadOcrStatus(); }
+  if (tab === "home") { loadRecords(); }
+}
+
+/* ===== MEMBERS ===== */
+function renderMemberStrip() {
+  const el = document.getElementById("memberStrip");
+  let html = '';
+  // "All" chip
+  html += `<div class="member-chip ${!currentMemberFilter ? 'active' : ''}" onclick="filterMember('')">
+    <div class="member-avatar" style="background:#94a3b8;">全</div>
+    <span class="member-chip-name">全部</span></div>`;
+  members.forEach(m => {
+    const initial = m.name.charAt(0);
+    html += `<div class="member-chip ${currentMemberFilter === m.id ? 'active' : ''}" onclick="filterMember('${m.id}')">
+      <div class="member-avatar" style="background:${m.avatar_color}">${esc(initial)}</div>
+      <span class="member-chip-name">${esc(m.name)}</span></div>`;
+  });
+  el.innerHTML = html;
+}
+
+function filterMember(id) {
+  currentMemberFilter = id;
+  if (id) localStorage.setItem("lastMemberId", id);
+  else localStorage.removeItem("lastMemberId");
+  renderMemberStrip();
   loadRecords();
 }
 
+function renderMemberManageList() {
+  const el = document.getElementById("memberManageList");
+  if (!members.length) { el.innerHTML = '<p style="text-align:center;color:var(--text-secondary);padding:16px;">暂无成员</p>'; return; }
+  let html = '';
+  members.forEach(m => {
+    html += `<div class="member-manage-card">
+      <div class="member-manage-avatar" style="background:${m.avatar_color}">${esc(m.name.charAt(0))}</div>
+      <div class="member-manage-info">
+        <div class="member-manage-name">${esc(m.name)}</div>
+        <div class="member-manage-meta">${esc(m.relation_label)} · ${m.record_count}条记录</div>
+      </div>
+      <div class="member-manage-actions">
+        <button class="icon-btn" onclick="editMember('${m.id}')">&#9998;</button>
+        <button class="icon-btn danger" onclick="deleteMember('${m.id}','${esc(m.name)}')">&#10005;</button>
+      </div>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+async function refreshMembers() {
+  const res = await fetch("/api/members");
+  members = await res.json();
+  renderMemberStrip();
+  renderMemberManageList();
+}
+
+function showAddMember(editId) {
+  document.getElementById("memberEditId").value = editId || "";
+  document.getElementById("memberModalTitle").textContent = editId ? "编辑成员" : "添加成员";
+  // Populate relation select
+  const sel = document.getElementById("memberRelationSelect");
+  sel.innerHTML = "";
+  for (const [k, v] of Object.entries(relations)) {
+    sel.innerHTML += `<option value="${k}">${v}</option>`;
+  }
+  // Color picker
+  renderColorPicker();
+  if (editId) {
+    const m = members.find(x => x.id === editId);
+    if (m) {
+      document.getElementById("memberNameInput").value = m.name;
+      sel.value = m.relation;
+      selectedColor = m.avatar_color;
+      renderColorPicker();
+    }
+  } else {
+    document.getElementById("memberNameInput").value = "";
+    selectedColor = COLORS[members.length % COLORS.length];
+    renderColorPicker();
+  }
+  document.getElementById("addMemberModal").style.display = "flex";
+}
+
+function hideAddMember() {
+  document.getElementById("addMemberModal").style.display = "none";
+}
+
+function renderColorPicker() {
+  const el = document.getElementById("colorPicker");
+  el.innerHTML = COLORS.map(c =>
+    `<div onclick="selectColor('${c}')" style="width:36px;height:36px;border-radius:50%;background:${c};cursor:pointer;border:3px solid ${c===selectedColor?'#000':'transparent'};"></div>`
+  ).join("");
+}
+
+function selectColor(c) { selectedColor = c; renderColorPicker(); }
+
+function editMember(id) { showAddMember(id); }
+
+async function saveMember(e) {
+  e.preventDefault();
+  const editId = document.getElementById("memberEditId").value;
+  const fd = new FormData();
+  fd.append("name", document.getElementById("memberNameInput").value);
+  fd.append("relation", document.getElementById("memberRelationSelect").value);
+  fd.append("avatar_color", selectedColor);
+  const url = editId ? `/api/members/${editId}` : "/api/members";
+  const method = editId ? "PUT" : "POST";
+  try {
+    const res = await fetch(url, { method, body: fd });
+    if (!res.ok) { const err = await res.json(); alert(err.detail || "操作失败"); return; }
+    hideAddMember();
+    await refreshMembers();
+  } catch (err) { alert("操作失败: " + err.message); }
+}
+
+async function deleteMember(id, name) {
+  if (!confirm(`确定删除成员「${name}」吗？其记录将保留但不再关联此成员。`)) return;
+  try {
+    const res = await fetch(`/api/members/${id}`, { method: "DELETE" });
+    if (!res.ok) { alert("删除失败"); return; }
+    if (currentMemberFilter === id) { currentMemberFilter = ""; localStorage.removeItem("lastMemberId"); }
+    await refreshMembers();
+    loadRecords();
+  } catch (err) { alert("删除失败"); }
+}
+
+/* ===== CATEGORY NAV ===== */
 function renderCategoryNav() {
   const nav = document.getElementById("categoryNav");
-  let html = '<button class="cat-btn active" data-cat="" onclick="filterCategory(this, \'\')">全部</button>';
-  for (const [key, label] of Object.entries(categories)) {
-    html += `<button class="cat-btn" data-cat="${key}" onclick="filterCategory(this, '${key}')">${label}</button>`;
+  let html = `<button class="cat-chip ${!currentCategory?'active':''}" onclick="filterCategory(this,'')" style="padding:8px 16px;border-radius:20px;border:1px solid var(--border);background:${!currentCategory?'var(--primary)':'#fff'};color:${!currentCategory?'#fff':'var(--text-secondary)'};font-size:14px;cursor:pointer;flex-shrink:0;min-height:40px;">全部</button>`;
+  for (const [k, v] of Object.entries(categories)) {
+    const isActive = currentCategory === k;
+    html += `<button class="cat-chip ${isActive?'active':''}" onclick="filterCategory(this,'${k}')" style="padding:8px 16px;border-radius:20px;border:1px solid var(--border);background:${isActive?'var(--primary)':'#fff'};color:${isActive?'#fff':'var(--text-secondary)'};font-size:14px;cursor:pointer;flex-shrink:0;white-space:nowrap;min-height:40px;">${v}</button>`;
   }
   nav.innerHTML = html;
-  // populate select
-  const sel = document.getElementById("categorySelect");
-  sel.innerHTML = "";
-  for (const [key, label] of Object.entries(categories)) {
-    sel.innerHTML += `<option value="${key}">${label}</option>`;
+
+  // Populate upload category select
+  const sel = document.getElementById("uploadCategory");
+  if (sel) {
+    sel.innerHTML = "";
+    for (const [k, v] of Object.entries(categories)) {
+      sel.innerHTML += `<option value="${k}">${v}</option>`;
+    }
   }
 }
 
 function filterCategory(btn, cat) {
   currentCategory = cat;
-  document.querySelectorAll(".cat-btn").forEach(b => b.classList.remove("active"));
-  btn.classList.add("active");
+  renderCategoryNav();
   loadRecords();
 }
 
+/* ===== RECORDS ===== */
 async function loadRecords() {
-  const url = currentCategory ? `/api/records?category=${currentCategory}` : "/api/records";
+  let url = "/api/records?size=50";
+  if (currentCategory) url += `&category=${currentCategory}`;
+  if (currentMemberFilter) url += `&member_id=${currentMemberFilter}`;
   const res = await fetch(url);
   const data = await res.json();
-  const main = document.getElementById("recordsList");
-  if (data.items.length === 0) {
-    document.getElementById("emptyState").style.display = "";
-    main.innerHTML = "";
-    main.appendChild(createEmptyState());
+  const el = document.getElementById("recordsList");
+
+  if (!data.items.length) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div>
+      <p>还没有健康记录</p><p class="sub">点击底部「拍照」按钮添加第一条记录</p></div>`;
     return;
   }
-  let html = '<div class="record-grid">';
-  for (const r of data.items) {
+
+  let html = '';
+  data.items.forEach(r => {
     const date = r.created_at ? new Date(r.created_at).toLocaleDateString("zh-CN") : "";
-    html += `
-      <div class="record-card" onclick="viewRecord('${r.id}')">
-        <img src="/api/records/${r.id}/thumb" loading="lazy" alt="${r.title}">
-        <div class="record-info">
-          <div class="title">${escapeHtml(r.title)}</div>
-          <div class="meta">
-            <span class="cat-tag">${escapeHtml(r.category_label)}</span>
-            <span>${date}</span>
-          </div>
+    const ocrClass = r.ocr_status === "done" ? "done" : (r.ocr_status === "pending" || r.ocr_status === "processing") ? "pending" : r.ocr_status === "failed" ? "failed" : "";
+    html += `<div class="record-card" onclick="viewRecord('${r.id}')">
+      <img class="record-thumb" src="/api/records/${r.id}/thumb" loading="lazy">
+      <div class="record-body">
+        <div class="record-title">${esc(r.title)}</div>
+        <div class="record-meta">
+          <span class="cat-tag">${esc(r.category_label)}</span>
+          ${r.member_name ? '<span>'+esc(r.member_name)+'</span>' : ''}
+          <span>${date}</span>
+          ${ocrClass ? '<span class="ocr-dot '+ocrClass+'" title="OCR: '+r.ocr_status+'"></span>' : ''}
         </div>
-      </div>`;
-  }
-  html += "</div>";
-  main.innerHTML = html;
+      </div>
+    </div>`;
+  });
+  el.innerHTML = html;
 }
 
-function createEmptyState() {
-  const div = document.createElement("div");
-  div.className = "empty-state";
-  div.innerHTML = `<div class="empty-icon">📋</div><p>还没有病历记录</p>
-    <p class="sub">点击右上角「+ 上传」添加第一条记录</p>`;
-  return div;
+/* ===== CAMERA / UPLOAD ===== */
+function triggerCamera() { document.getElementById("cameraInput").click(); }
+function triggerAlbum() { document.getElementById("albumInput").click(); }
+
+function onPhotoSelected(input) {
+  if (!input.files || !input.files[0]) return;
+  selectedUploadFile = input.files[0];
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById("uploadPreview").src = e.target.result;
+    document.getElementById("cameraStep1").style.display = "none";
+    document.getElementById("cameraStep2").style.display = "flex";
+    renderUploadMemberSelect();
+  };
+  reader.readAsDataURL(input.files[0]);
 }
 
-function showUploadModal() {
-  document.getElementById("uploadModal").style.display = "flex";
-  document.body.style.overflow = "hidden";
+function renderUploadMemberSelect() {
+  const el = document.getElementById("uploadMemberSelect");
+  if (!el) return;
+  // Default to last used member
+  if (!selectedUploadMember && currentMemberFilter) selectedUploadMember = currentMemberFilter;
+  if (!selectedUploadMember && members.length) selectedUploadMember = members.find(m => m.is_default)?.id || members[0].id;
+
+  let html = '';
+  members.forEach(m => {
+    html += `<button type="button" class="member-select-btn ${selectedUploadMember === m.id ? 'active' : ''}" onclick="selectUploadMember('${m.id}')">
+      <span style="width:24px;height:24px;border-radius:50%;background:${m.avatar_color};display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:12px;">${esc(m.name.charAt(0))}</span>
+      ${esc(m.name)}</button>`;
+  });
+  el.innerHTML = html;
 }
 
-function hideUploadModal() {
-  document.getElementById("uploadModal").style.display = "none";
-  document.body.style.overflow = "";
-  document.getElementById("uploadForm").reset();
-  document.getElementById("imagePreview").style.display = "none";
-  document.getElementById("uploadPlaceholder").style.display = "";
+function selectUploadMember(id) {
+  selectedUploadMember = id;
+  renderUploadMemberSelect();
 }
 
-function previewImage(input) {
-  if (input.files && input.files[0]) {
-    const reader = new FileReader();
-    reader.onload = e => {
-      const img = document.getElementById("imagePreview");
-      img.src = e.target.result;
-      img.style.display = "block";
-      document.getElementById("uploadPlaceholder").style.display = "none";
-    };
-    reader.readAsDataURL(input.files[0]);
-  }
+function resetCamera() {
+  document.getElementById("cameraStep1").style.display = "flex";
+  document.getElementById("cameraStep2").style.display = "none";
+  document.getElementById("cameraInput").value = "";
+  document.getElementById("albumInput").value = "";
+  document.getElementById("uploadTitle").value = "";
+  document.getElementById("uploadNote").value = "";
+  selectedUploadFile = null;
 }
 
-async function submitRecord(e) {
-  e.preventDefault();
-  const fileInput = document.getElementById("imageInput");
-  if (!fileInput.files || !fileInput.files[0]) {
-    alert("请选择图片");
-    return;
-  }
-  const btn = document.getElementById("submitBtn");
+async function submitUpload() {
+  if (!selectedUploadFile) { alert("请先拍照或选择图片"); return; }
+  const btn = document.getElementById("uploadSaveBtn");
   const overlay = document.getElementById("loadingOverlay");
+  document.getElementById("loadingText").textContent = "上传中...";
   btn.disabled = true;
   overlay.style.display = "flex";
 
   const fd = new FormData();
-  fd.append("image", fileInput.files[0]);
-  fd.append("title", document.getElementById("titleInput").value);
-  fd.append("category", document.getElementById("categorySelect").value);
-  fd.append("note", document.getElementById("noteInput").value);
+  fd.append("image", selectedUploadFile);
+  fd.append("title", document.getElementById("uploadTitle").value);
+  fd.append("category", document.getElementById("uploadCategory").value);
+  fd.append("note", document.getElementById("uploadNote").value);
+  if (selectedUploadMember) fd.append("member_id", selectedUploadMember);
 
   try {
     const res = await fetch("/api/records", { method: "POST", body: fd });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.detail || "上传失败");
-    }
-    hideUploadModal();
+    if (!res.ok) { const err = await res.json(); throw new Error(err.detail || "上传失败"); }
+    resetCamera();
+    switchTab("home");
     loadRecords();
   } catch (err) {
     alert(err.message);
@@ -398,14 +776,17 @@ async function submitRecord(e) {
   }
 }
 
+/* ===== RECORD VIEWER ===== */
 async function viewRecord(id) {
   currentViewId = id;
   const res = await fetch(`/api/records/${id}`);
   const r = await res.json();
+
   document.getElementById("viewerTitle").textContent = r.title;
   document.getElementById("viewerImage").src = `/api/records/${id}/image`;
-  const date = r.created_at ? new Date(r.created_at).toLocaleDateString("zh-CN") : "";
-  let meta = `${r.category_label} · ${date}`;
+  let meta = `${r.category_label}`;
+  if (r.member_name) meta += ` · ${r.member_name}`;
+  if (r.created_at) meta += ` · ${new Date(r.created_at).toLocaleDateString("zh-CN")}`;
   if (r.note) meta += ` · ${r.note}`;
   document.getElementById("viewerMeta").textContent = meta;
   document.getElementById("viewerDeleteBtn").onclick = () => deleteRecord(id);
@@ -417,9 +798,9 @@ async function viewRecord(id) {
   } else if (r.ocr_status === "processing" || r.ocr_status === "pending") {
     textEl.innerHTML = '<div class="ocr-placeholder">OCR 识别中...</div>';
   } else if (r.ocr_status === "disabled") {
-    textEl.innerHTML = '<div class="ocr-placeholder">OCR 未配置<br><small>请设置百度OCR环境变量</small></div>';
+    textEl.innerHTML = '<div class="ocr-placeholder">OCR 未配置</div>';
   } else if (r.ocr_status === "failed") {
-    textEl.innerHTML = '<div class="ocr-placeholder">OCR 识别失败，可点击「重新识别」重试</div>';
+    textEl.innerHTML = '<div class="ocr-placeholder">识别失败，可点击「重新识别」重试</div>';
   } else {
     textEl.innerHTML = '<div class="ocr-placeholder">暂无文字数据</div>';
   }
@@ -428,35 +809,29 @@ async function viewRecord(id) {
   const tableEl = document.getElementById("ocrTableContent");
   if (r.ocr_tables && r.ocr_tables.length > 0) {
     let html = "";
-    r.ocr_tables.forEach((table, idx) => {
-      html += '<table>';
+    r.ocr_tables.forEach(table => {
+      html += "<table>";
       table.forEach((row, ri) => {
         html += "<tr>";
-        row.forEach(cell => {
-          const tag = ri === 0 ? "th" : "td";
-          html += `<${tag}>${escapeHtml(cell)}</${tag}>`;
-        });
+        row.forEach(cell => { html += `<${ri===0?"th":"td"}>${esc(cell)}</${ri===0?"th":"td"}>`; });
         html += "</tr>";
       });
-      html += "</table>";
-      if (idx < r.ocr_tables.length - 1) html += "<br>";
+      html += "</table><br>";
     });
     tableEl.innerHTML = html;
   } else if (r.ocr_status === "processing" || r.ocr_status === "pending") {
-    tableEl.innerHTML = '<div class="no-table">OCR 识别中...</div>';
+    tableEl.innerHTML = '<div class="ocr-placeholder">OCR 识别中...</div>';
   } else {
-    tableEl.innerHTML = '<div class="no-table">暂无表格数据</div>';
+    tableEl.innerHTML = '<div class="ocr-placeholder">暂无表格数据</div>';
   }
 
-  // Show re-OCR button
-  const reocrBtn = document.getElementById("viewerReocrBtn");
-  reocrBtn.style.display = (r.ocr_status === "failed" || r.ocr_status === "done" || r.ocr_status === "disabled") ? "" : "none";
+  // Re-OCR button
+  document.getElementById("viewerReocrBtn").style.display =
+    (r.ocr_status === "failed" || r.ocr_status === "done" || r.ocr_status === "disabled") ? "" : "none";
 
   // Reset to image tab
-  switchViewerTab(document.querySelector('.vtab'), 'image');
-
+  switchViewerTab(document.querySelector(".vtab"), "image");
   document.getElementById("viewerModal").style.display = "flex";
-  document.body.style.overflow = "hidden";
 }
 
 function switchViewerTab(btn, tab) {
@@ -470,16 +845,10 @@ function switchViewerTab(btn, tab) {
 async function reocrRecord() {
   if (!currentViewId) return;
   const btn = document.getElementById("viewerReocrBtn");
-  btn.textContent = "识别中...";
-  btn.disabled = true;
+  btn.textContent = "识别中..."; btn.disabled = true;
   try {
     const res = await fetch(`/api/records/${currentViewId}/reocr`, { method: "POST" });
-    if (!res.ok) {
-      const err = await res.json();
-      alert(err.detail || "重新识别失败");
-      return;
-    }
-    // Poll for completion
+    if (!res.ok) { const err = await res.json(); alert(err.detail || "重新识别失败"); return; }
     let attempts = 0;
     const poll = setInterval(async () => {
       attempts++;
@@ -490,119 +859,93 @@ async function reocrRecord() {
         viewRecord(currentViewId);
       }
     }, 2000);
-  } catch (e) {
-    alert("重新识别失败");
-  } finally {
-    btn.textContent = "重新识别";
-    btn.disabled = false;
-  }
+  } catch (e) { alert("重新识别失败"); }
+  finally { btn.textContent = "重新识别"; btn.disabled = false; }
 }
 
 function hideViewer() {
   document.getElementById("viewerModal").style.display = "none";
-  document.body.style.overflow = "";
   currentViewId = null;
+  loadRecords();
 }
 
 async function deleteRecord(id) {
-  if (!confirm("确定删除这条病历记录吗？")) return;
+  if (!confirm("确定删除这条记录吗？")) return;
   const res = await fetch(`/api/records/${id}`, { method: "DELETE" });
-  if (res.ok) {
-    hideViewer();
-    loadRecords();
-  } else {
-    alert("删除失败");
-  }
+  if (res.ok) { hideViewer(); } else { alert("删除失败"); }
 }
 
-function escapeHtml(s) {
-  const d = document.createElement("div");
-  d.textContent = s;
-  return d.innerHTML;
+/* ===== OCR SETTINGS ===== */
+async function loadOcrStatus() {
+  try {
+    const res = await fetch("/api/ocr-status");
+    const data = await res.json();
+    const badge = document.getElementById("ocrStatusBadge");
+    if (data.enabled) {
+      badge.className = "status-badge on"; badge.textContent = "已配置";
+    } else {
+      badge.className = "status-badge off"; badge.textContent = "未配置";
+    }
+  } catch (e) {}
 }
 
-// --- Settings ---
-async function showSettings() {
-  document.getElementById("settingsModal").style.display = "flex";
-  document.body.style.overflow = "hidden";
+async function showOcrSettings() {
+  document.getElementById("ocrSettingsModal").style.display = "flex";
   document.getElementById("ocrTestResult").style.display = "none";
-  // Load current settings
   try {
     const res = await fetch("/api/settings/ocr");
     const data = await res.json();
-    const banner = document.getElementById("ocrStatusBanner");
+    const banner = document.getElementById("ocrSettingsBanner");
     if (data.enabled) {
-      banner.style.background = "#ecfdf5";
-      banner.style.color = "#065f46";
-      banner.textContent = "OCR 已配置 (来源: " + (data.source === "database" ? "应用设置" : "环境变量") + ")";
-      document.getElementById("ocrApiKey").placeholder = data.api_key_masked || "已配置";
-      document.getElementById("ocrSecretKey").placeholder = data.secret_key_masked || "已配置";
+      banner.style.background = "#dcfce7"; banner.style.color = "#166534";
+      banner.textContent = "已配置 (来源: " + (data.source === "database" ? "应用设置" : "环境变量") + ")";
+      document.getElementById("ocrApiKeyInput").placeholder = data.api_key_masked || "已配置";
+      document.getElementById("ocrSecretKeyInput").placeholder = data.secret_key_masked || "已配置";
     } else {
-      banner.style.background = "#fef2f2";
-      banner.style.color = "#991b1b";
-      banner.textContent = "OCR 未配置 — 请输入百度OCR密钥";
-      document.getElementById("ocrApiKey").placeholder = "输入 API Key";
-      document.getElementById("ocrSecretKey").placeholder = "输入 Secret Key";
+      banner.style.background = "#fef2f2"; banner.style.color = "#991b1b";
+      banner.textContent = "未配置 — 请输入百度OCR密钥";
     }
-  } catch (e) {
-    console.error(e);
-  }
+  } catch (e) {}
 }
 
-function hideSettings() {
-  document.getElementById("settingsModal").style.display = "none";
-  document.body.style.overflow = "";
-  document.getElementById("ocrSettingsForm").reset();
+function hideOcrSettings() {
+  document.getElementById("ocrSettingsModal").style.display = "none";
+  loadOcrStatus();
 }
 
 async function saveOcrSettings(e) {
   e.preventDefault();
-  const apiKey = document.getElementById("ocrApiKey").value.trim();
-  const secretKey = document.getElementById("ocrSecretKey").value.trim();
-  if (!apiKey || !secretKey) {
-    alert("请输入 API Key 和 Secret Key");
-    return;
-  }
+  const apiKey = document.getElementById("ocrApiKeyInput").value.trim();
+  const secretKey = document.getElementById("ocrSecretKeyInput").value.trim();
+  if (!apiKey || !secretKey) { alert("请输入 API Key 和 Secret Key"); return; }
+  const fd = new FormData();
+  fd.append("api_key", apiKey); fd.append("secret_key", secretKey);
   try {
-    const fd = new FormData();
-    fd.append("api_key", apiKey);
-    fd.append("secret_key", secretKey);
     const res = await fetch("/api/settings/ocr", { method: "POST", body: fd });
     const data = await res.json();
-    if (res.ok) {
-      alert(data.message || "保存成功");
-      showSettings(); // Refresh status
-    } else {
-      alert(data.detail || "保存失败");
-    }
-  } catch (err) {
-    alert("保存失败: " + err.message);
-  }
+    if (res.ok) { alert(data.message || "保存成功"); showOcrSettings(); }
+    else { alert(data.detail || "保存失败"); }
+  } catch (err) { alert("保存失败"); }
 }
 
 async function testOcrConnection() {
   const result = document.getElementById("ocrTestResult");
-  result.style.display = "block";
-  result.style.background = "#f1f5f9";
-  result.style.color = "#475569";
+  result.style.display = "block"; result.style.background = "#f1f5f9"; result.style.color = "#475569";
   result.textContent = "测试中...";
   try {
     const res = await fetch("/api/settings/ocr/test", { method: "POST" });
     const data = await res.json();
-    if (data.success) {
-      result.style.background = "#ecfdf5";
-      result.style.color = "#065f46";
-    } else {
-      result.style.background = "#fef2f2";
-      result.style.color = "#991b1b";
-    }
+    result.style.background = data.success ? "#dcfce7" : "#fef2f2";
+    result.style.color = data.success ? "#166534" : "#991b1b";
     result.textContent = data.message;
   } catch (err) {
-    result.style.background = "#fef2f2";
-    result.style.color = "#991b1b";
-    result.textContent = "测试失败: " + err.message;
+    result.style.background = "#fef2f2"; result.style.color = "#991b1b";
+    result.textContent = "测试失败";
   }
 }
+
+/* ===== UTILS ===== */
+function esc(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
 
 init();
 </script>
