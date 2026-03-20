@@ -39,6 +39,22 @@ body {
 }
 .app-header h1 { font-size: 20px; font-weight: 600; letter-spacing: 1px; }
 
+/* === FLOATING ADD BUTTON === */
+.fab {
+  position: fixed; bottom: calc(24px + var(--safe-bottom)); right: 24px;
+  width: 60px; height: 60px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), #3b82f6);
+  border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 20px rgba(37,99,235,0.4);
+  z-index: 150; transition: transform .15s, box-shadow .15s;
+}
+.fab:active { transform: scale(0.92); box-shadow: 0 2px 10px rgba(37,99,235,0.3); }
+.fab svg { width: 28px; height: 28px; color: #fff; }
+@media (max-width: 500px) {
+  .fab { right: calc(50% - 240px + 24px); }
+}
+
 /* === BOTTOM NAV === */
 .bottom-nav {
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
@@ -50,8 +66,8 @@ body {
 .nav-item {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   flex: 1; height: 100%; border: none; background: none;
-  color: var(--text-secondary); font-size: 12px; cursor: pointer;
-  transition: color .2s; gap: 2px; padding: 0;
+  color: var(--text-secondary); font-size: 11px; cursor: pointer;
+  transition: color .2s; gap: 1px; padding: 0;
 }
 .nav-item.active { color: var(--primary); }
 .nav-item svg { width: 26px; height: 26px; }
@@ -81,21 +97,47 @@ body {
 .member-chip-name { font-size: 13px; color: var(--text-secondary); white-space: nowrap; }
 .member-chip.active .member-chip-name { color: var(--primary); font-weight: 600; }
 
-/* === RECORD CARDS === */
-.section-title { font-size: 16px; font-weight: 600; margin: 16px 0 10px; color: var(--text); }
-.record-list { display: flex; flex-direction: column; gap: 10px; }
-.record-card {
-  background: var(--card-bg); border-radius: var(--radius); padding: 14px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06); cursor: pointer;
-  display: flex; gap: 12px; align-items: center; transition: transform .1s;
-  min-height: 56px;
+/* === CHIP FILTERS === */
+.chip {
+  padding: 8px 16px; border-radius: 20px; border: 1.5px solid var(--border);
+  background: #fff; font-size: 14px; cursor: pointer; flex-shrink: 0;
+  color: var(--text-secondary); transition: all .2s; min-height: 40px;
+  font-weight: 500; white-space: nowrap;
 }
-.record-card:active { transform: scale(0.98); }
-.record-thumb { width: 56px; height: 56px; border-radius: 8px; object-fit: cover; flex-shrink: 0; background: #f1f5f9; }
-.record-body { flex: 1; min-width: 0; }
-.record-title { font-size: 16px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.record-meta { font-size: 13px; color: var(--text-secondary); margin-top: 2px; display: flex; gap: 8px; align-items: center; }
-.cat-tag { background: #eff6ff; color: var(--primary); padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+.chip.active { background: var(--primary); color: #fff; border-color: var(--primary); font-weight: 600; }
+
+/* === RECORD CARDS (Grid) === */
+.section-title { font-size: 16px; font-weight: 600; margin: 16px 0 10px; color: var(--text); }
+.record-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  padding-bottom: 80px;
+}
+.record-card {
+  background: var(--card-bg); border-radius: var(--radius); padding: 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06); cursor: pointer;
+  overflow: hidden; transition: transform .15s, box-shadow .15s;
+  display: flex; flex-direction: column;
+}
+.record-card:active { transform: scale(0.97); }
+.record-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+.record-thumb-wrap { position: relative; width: 100%; padding-top: 75%; overflow: hidden; }
+.record-thumb {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  object-fit: cover; border-radius: 0;
+}
+.record-card-badge {
+  position: absolute; top: 8px; left: 8px;
+  background: rgba(0,0,0,0.6); color: #fff;
+  padding: 3px 8px; border-radius: 4px;
+  font-size: 11px; font-weight: 500;
+}
+.record-card-body { padding: 10px; flex: 1; display: flex; flex-direction: column; }
+.record-title { font-size: 14px; font-weight: 600; color: var(--text); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.record-meta { font-size: 12px; color: var(--text-secondary); margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.cat-tag { background: #eff6ff; color: var(--primary); padding: 2px 6px; border-radius: 4px; font-size: 11px; }
+.member-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 .ocr-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 .ocr-dot.done { background: var(--success); }
 .ocr-dot.pending, .ocr-dot.processing { background: #f59e0b; }
@@ -316,7 +358,174 @@ body {
 .login-tabs { display: flex; gap: 0; margin-bottom: 20px; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
 .login-tab { flex: 1; padding: 12px; border: none; background: #fff; font-size: 15px; cursor: pointer; color: var(--text-secondary); font-weight: 500; }
 .login-tab.active { background: var(--primary); color: #fff; }
+
+/* 首页数据汇总 */
+.home-header, .profile-header, .records-header { padding: 20px 20px 0; }
+.home-header h1, .profile-header h1, .records-header h1 { font-size: 24px; font-weight: 700; margin: 0; }
+.home-subtitle { color: var(--text-secondary); font-size: 14px; margin: 4px 0 0; }
+.stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 16px 20px; }
+.stat-card { background: #fff; border-radius: 12px; padding: 16px; display: flex; align-items: center; gap: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.stat-icon { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+.stat-icon svg { width: 22px; height: 22px; }
+.stat-info { display: flex; flex-direction: column; }
+.stat-value { font-size: 22px; font-weight: 700; color: var(--text-primary); }
+.stat-label { font-size: 12px; color: var(--text-secondary); }
+.recent-section { padding: 0 20px 20px; }
+.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-weight: 600; }
+.btn-text { background: none; border: none; color: var(--primary); font-size: 14px; cursor: pointer; }
+.recent-list { display: flex; flex-direction: column; gap: 10px; }
+.recent-card { display: flex; gap: 12px; background: #fff; border-radius: 10px; padding: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); cursor: pointer; }
+.recent-thumb { width: 56px; height: 56px; border-radius: 8px; object-fit: cover; }
+.recent-info { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+.recent-title { font-size: 14px; font-weight: 500; margin-bottom: 4px; }
+.recent-meta { font-size: 12px; color: var(--text-secondary); display: flex; gap: 8px; }
+/* === TREND DASHBOARD === */
+.indicator-filter {
+  display: flex; gap: 8px; overflow-x: auto; padding: 12px 0 8px;
+  -webkit-overflow-scrolling: touch;
+}
+.indicator-filter::-webkit-scrollbar { display: none; }
+.ind-chip {
+  padding: 8px 16px; border-radius: 20px; border: 1.5px solid var(--border);
+  background: #fff; font-size: 14px; cursor: pointer; flex-shrink: 0;
+  color: var(--text-secondary); transition: all .2s; min-height: 40px;
+  font-weight: 500;
+}
+.ind-chip.active { background: var(--primary); color: #fff; border-color: var(--primary); font-weight: 600; }
+
+.indicator-summary {
+  background: var(--card-bg); border-radius: var(--radius); padding: 16px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06); margin: 8px 0 12px;
+  display: flex; align-items: center; justify-content: space-between;
+  border-left: 4px solid var(--primary);
+}
+.indicator-summary.abnormal { border-left-color: var(--danger); background: #fef2f2; }
+.ind-latest { font-size: 14px; color: var(--text-secondary); }
+.ind-latest strong { font-size: 28px; color: var(--text); display: block; margin-top: 2px; }
+.indicator-summary.abnormal .ind-latest strong { color: var(--danger); }
+.ind-range { font-size: 13px; color: var(--text-secondary); text-align: center; }
+.ind-status { font-size: 14px; font-weight: 600; padding: 4px 12px; border-radius: 8px; }
+.ind-status.normal { background: #dcfce7; color: #166534; }
+.ind-status.abnormal { background: #fef2f2; color: var(--danger); }
+
+.trend-chart {
+  background: var(--card-bg); border-radius: var(--radius); padding: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06); margin-bottom: 16px;
+  min-height: 280px;
+}
+
+.abnormal-summary { margin-bottom: 80px; }
+.abnormal-summary h3 { font-size: 16px; font-weight: 600; margin-bottom: 10px; }
+.abnormal-item {
+  display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+  background: var(--card-bg); border-radius: 10px; margin-bottom: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.abnormal-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.abnormal-dot.high { background: var(--danger); }
+.abnormal-dot.low { background: #f59e0b; }
+.abnormal-info { flex: 1; }
+.abnormal-label { font-size: 14px; font-weight: 500; }
+.abnormal-detail { font-size: 12px; color: var(--text-secondary); }
+
+/* === TIMELINE === */
+.timeline-header { padding: 20px 20px 0; }
+.timeline-header h1 { font-size: 24px; font-weight: 700; margin: 0 0 8px; }
+.timeline-container { padding: 8px 16px 80px; }
+.timeline-group { margin-bottom: 20px; }
+.timeline-year {
+  font-size: 20px; font-weight: 700; color: var(--primary);
+  margin-bottom: 14px; padding-left: 4px;
+}
+.timeline-year .year-count { font-size: 13px; font-weight: 400; color: var(--text-secondary); margin-left: 8px; }
+
+.timeline-item {
+  display: flex; gap: 10px; position: relative;
+  padding-bottom: 18px;
+}
+.timeline-item::before {
+  content: ''; position: absolute; left: 39px; top: 30px; bottom: 0;
+  width: 2px; background: linear-gradient(to bottom, var(--border), transparent);
+}
+.timeline-item:last-child::before { display: none; }
+
+.timeline-date-col {
+  width: 44px; flex-shrink: 0; text-align: center; padding-top: 2px;
+}
+.timeline-date-col .month { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; }
+.timeline-date-col .day { font-size: 20px; font-weight: 700; color: var(--text); line-height: 1.1; }
+
+.timeline-node {
+  width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0;
+  background: var(--primary); margin-top: 6px; position: relative;
+  z-index: 1;
+}
+.timeline-node::after {
+  content: ''; position: absolute; inset: -3px;
+  border-radius: 50%; border: 2px solid rgba(37,99,235,0.2);
+}
+.timeline-node.has-alert { background: var(--danger); }
+.timeline-node.has-alert::after { border-color: rgba(220,38,38,0.2); }
+
+.timeline-card {
+  flex: 1; background: var(--card-bg); border-radius: var(--radius);
+  padding: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  cursor: pointer; transition: transform .15s, box-shadow .15s;
+}
+.timeline-card:active { transform: scale(0.98); }
+.timeline-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+.timeline-card-hospital { font-size: 15px; font-weight: 600; margin-bottom: 6px; color: var(--text); }
+.timeline-card-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+.timeline-tag {
+  padding: 2px 8px; border-radius: 4px; font-size: 12px;
+  background: #eff6ff; color: var(--primary); font-weight: 500;
+}
+.timeline-alert {
+  display: inline-block; padding: 4px 10px; border-radius: 6px;
+  background: #fef2f2; color: var(--danger); font-size: 13px;
+  font-weight: 600; margin-top: 2px; margin-right: 6px;
+}
+.timeline-alert svg { width: 14px; height: 14px; vertical-align: -2px; margin-right: 2px; }
+
+/* === REPORT DETAIL === */
+.report-section { padding: 16px; overflow-y: auto; flex: 1; }
+.report-conclusion {
+  background: #f0f9ff; border-left: 4px solid var(--primary);
+  padding: 14px 16px; border-radius: 0 10px 10px 0; margin-bottom: 20px;
+  font-size: 15px; line-height: 1.7; color: var(--text);
+}
+.report-conclusion .conclusion-label {
+  font-size: 12px; font-weight: 600; color: var(--primary);
+  text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;
+}
+
+.metric-section-title {
+  font-size: 15px; font-weight: 600; color: var(--text);
+  margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
+}
+.metric-list { display: flex; flex-direction: column; margin-bottom: 20px; }
+.metric-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 0; border-bottom: 1px solid var(--border);
+}
+.metric-item:last-child { border-bottom: none; }
+.metric-name { font-size: 15px; color: var(--text); }
+.metric-value-group { text-align: right; }
+.metric-value { font-size: 15px; font-weight: 500; display: flex; align-items: center; gap: 4px; justify-content: flex-end; }
+.metric-value.abnormal { color: var(--danger); font-weight: 700; }
+.metric-arrow { font-size: 16px; font-weight: 700; }
+.metric-range { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+
+.report-thumb-section { margin-top: 8px; }
+.report-thumb-section .thumb-label {
+  font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 10px;
+}
+.report-thumb-section img {
+  width: 100%; border-radius: var(--radius); cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 </head>
 <body>
 
@@ -365,11 +574,51 @@ body {
   <h1>小安健康档案</h1>
 </header>
 
-<!-- ===== PAGE: HOME ===== -->
+<!-- ===== PAGE: HOME (档案) ===== -->
 <div id="pageHome" class="page active">
-  <div id="memberStrip" class="member-strip"></div>
-  <div id="categoryNav" style="display:flex;gap:8px;overflow-x:auto;padding:4px 0 12px;-webkit-overflow-scrolling:touch;"></div>
-  <div id="recordsList" class="record-list"></div>
+  <div class="home-header">
+    <h1>健康档案</h1>
+    <p class="home-subtitle">管理全家健康记录</p>
+  </div>
+  <div id="homeMemberStrip" class="member-strip"></div>
+  <div id="homeCategoryNav" style="display:flex;gap:8px;overflow-x:auto;padding:4px 0 12px;-webkit-overflow-scrolling:touch;"></div>
+  <div id="homeRecordList" class="record-list"></div>
+
+  <!-- 上传按钮 -->
+  <div style="display:flex;flex-direction:column;align-items:center;margin-top:16px;margin-bottom:24px;">
+    <button class="fab" onclick="switchTab('camera')" style="position:relative;bottom:auto;right:auto;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+    </button>
+    <p style="text-align:center;color:var(--text-secondary);font-size:13px;margin-top:8px;">点击上传新档案</p>
+  </div>
+</div>
+
+<!-- ===== PAGE: TRENDS (趋势看板) ===== -->
+<div id="pageTrends" class="page">
+  <div class="home-header">
+    <h1>趋势看板</h1>
+    <p class="home-subtitle">核心指标变化追踪</p>
+  </div>
+  <div id="indicatorFilter" class="indicator-filter"></div>
+  <div id="indicatorSummary" class="indicator-summary">
+    <div class="ind-latest">最新值<strong id="indLatestValue">--</strong></div>
+    <div class="ind-range" id="indRange">参考范围 --</div>
+    <div class="ind-status normal" id="indStatus">正常</div>
+  </div>
+  <div id="trendChart" class="trend-chart"></div>
+  <div class="abnormal-summary">
+    <h3>异常记录</h3>
+    <div id="abnormalList"></div>
+  </div>
+</div>
+
+<!-- ===== PAGE: TIMELINE (就诊时间线) ===== -->
+<div id="pageTimeline" class="page">
+  <div class="timeline-header">
+    <h1>就诊时间线</h1>
+    <p class="home-subtitle">按时间追溯就诊记录</p>
+  </div>
+  <div class="timeline-container" id="timelineContainer"></div>
 </div>
 
 <!-- ===== PAGE: CAMERA ===== -->
@@ -412,10 +661,15 @@ body {
   </div>
 </div>
 
-<!-- ===== PAGE: PROFILE ===== -->
+<!-- ===== PAGE: PROFILE (我的) ===== -->
 <div id="pageProfile" class="page">
+  <div class="profile-header">
+    <h1>我的</h1>
+  </div>
+
+  <!-- 账号管理区 -->
   <div class="profile-section">
-    <div class="profile-section-title">我的账号</div>
+    <div class="profile-section-title">账号管理</div>
     <div class="settings-card">
       <div class="settings-row" style="cursor:default;">
         <span class="settings-label">手机号</span>
@@ -443,10 +697,12 @@ body {
     <button class="close-btn" onclick="hideViewer()">&times;</button>
   </div>
   <div class="viewer-tabs">
-    <button class="vtab active" onclick="switchViewerTab(this,'image')">原图</button>
-    <button class="vtab" onclick="switchViewerTab(this,'text')">文字</button>
-    <button class="vtab" onclick="switchViewerTab(this,'table')">表格</button>
+    <button class="vtab active" data-vtab="report" onclick="switchViewerTab(this,'report')">报告</button>
+    <button class="vtab" data-vtab="image" onclick="switchViewerTab(this,'image')">原图</button>
+    <button class="vtab" data-vtab="text" onclick="switchViewerTab(this,'text')">文字</button>
+    <button class="vtab" data-vtab="table" onclick="switchViewerTab(this,'table')">表格</button>
   </div>
+  <div class="viewer-body" id="viewerBodyReport" style="display:none;"></div>
   <div class="viewer-body" id="viewerBodyImage"><img id="viewerImage"></div>
   <div class="viewer-body" id="viewerBodyText" style="display:none;"><div id="ocrTextContent" class="ocr-text-content"></div></div>
   <div class="viewer-body" id="viewerBodyTable" style="display:none;"><div id="ocrTableContent" class="ocr-table-wrap"></div></div>
@@ -494,12 +750,16 @@ body {
 <!-- ===== BOTTOM NAV ===== -->
 <nav class="bottom-nav">
   <button class="nav-item active" data-tab="home" onclick="switchTab('home')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955a1.126 1.126 0 011.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/></svg>
-    <span>首页</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
+    <span>档案</span>
   </button>
-  <button class="nav-item" data-tab="camera" onclick="switchTab('camera')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z"/></svg>
-    <span>拍照</span>
+  <button class="nav-item" data-tab="trends" onclick="switchTab('trends')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg>
+    <span>趋势</span>
+  </button>
+  <button class="nav-item" data-tab="timeline" onclick="switchTab('timeline')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+    <span>时间线</span>
   </button>
   <button class="nav-item" data-tab="profile" onclick="switchTab('profile')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
@@ -522,6 +782,45 @@ let selectedUploadMember = "";
 let selectedUploadFile = null;
 let selectedColor = "#2563eb";
 const COLORS = ["#2563eb","#16a34a","#dc2626","#9333ea","#ea580c","#0891b2","#4f46e5","#be185d"];
+
+/* ===== MOCK DATA (Demo Mode) ===== */
+const INDICATORS = {
+  uric_acid:        { name: "尿酸",       unit: "μmol/L", min: 208, max: 428, color: "#2563eb" },
+  fasting_glucose:  { name: "空腹血糖",   unit: "mmol/L", min: 3.9, max: 6.1, color: "#16a34a" },
+  systolic_bp:      { name: "收缩压",     unit: "mmHg",   min: 90,  max: 140, color: "#9333ea" },
+  diastolic_bp:     { name: "舒张压",     unit: "mmHg",   min: 60,  max: 90,  color: "#0891b2" },
+  total_cholesterol:{ name: "总胆固醇",   unit: "mmol/L", min: 2.8, max: 5.17,color: "#ea580c" },
+  bmi:              { name: "BMI",        unit: "kg/m²",  min: 18.5,max: 24,  color: "#4f46e5" },
+};
+
+const MOCK_VISITS = [
+  { id:1, date:"2025-02-15", hospital:"浙大二院", dept:"内分泌科", tags:["血常规","生化全套"], conclusion:"患者尿酸持续偏高，建议控制高嘌呤饮食，多饮水。BMI略超标，建议增加运动量。空腹血糖正常范围内，继续监测。", indicators:{ uric_acid:482, fasting_glucose:5.6, systolic_bp:128, diastolic_bp:82, total_cholesterol:4.9, bmi:24.3 } },
+  { id:2, date:"2024-11-20", hospital:"浙江省人民医院", dept:"体检中心", tags:["年度体检"], conclusion:"整体健康状况良好，胆固醇偏高，建议低脂饮食。血压正常，心肺功能正常。", indicators:{ uric_acid:410, fasting_glucose:5.3, systolic_bp:122, diastolic_bp:78, total_cholesterol:5.4, bmi:23.8 } },
+  { id:3, date:"2024-08-10", hospital:"浙大二院", dept:"内分泌科", tags:["生化全套"], conclusion:"尿酸较上次有所下降，继续保持饮食控制。血糖指标正常。", indicators:{ uric_acid:445, fasting_glucose:5.5, systolic_bp:126, diastolic_bp:80, total_cholesterol:5.0, bmi:24.1 } },
+  { id:4, date:"2024-05-18", hospital:"杭州市第一人民医院", dept:"全科", tags:["血常规","尿常规"], conclusion:"血常规各项指标正常，尿常规未见异常。建议半年后复查生化全套。", indicators:{ uric_acid:438, fasting_glucose:5.8, systolic_bp:130, diastolic_bp:84, total_cholesterol:5.1, bmi:24.5 } },
+  { id:5, date:"2024-02-22", hospital:"浙大二院", dept:"内分泌科", tags:["生化全套","甲状腺功能"], conclusion:"尿酸偏高，甲状腺功能正常。需注意饮食控制，减少海鲜和动物内脏摄入。", indicators:{ uric_acid:510, fasting_glucose:5.4, systolic_bp:132, diastolic_bp:86, total_cholesterol:5.2, bmi:24.8 } },
+  { id:6, date:"2023-12-05", hospital:"浙江省人民医院", dept:"体检中心", tags:["年度体检"], conclusion:"较去年体检结果，BMI有所上升，建议减重。血脂偏高，需注意。血压偏高，建议低盐饮食。", indicators:{ uric_acid:468, fasting_glucose:6.3, systolic_bp:142, diastolic_bp:92, total_cholesterol:5.6, bmi:25.2 } },
+  { id:7, date:"2023-09-12", hospital:"浙大二院", dept:"内分泌科", tags:["生化全套"], conclusion:"血糖偏高，处于糖尿病前期，需严格控制碳水摄入并增加运动。尿酸持续偏高。", indicators:{ uric_acid:495, fasting_glucose:6.8, systolic_bp:136, diastolic_bp:88, total_cholesterol:5.3, bmi:25.0 } },
+  { id:8, date:"2023-06-20", hospital:"杭州市第一人民医院", dept:"全科", tags:["血常规","生化全套"], conclusion:"多项指标异常，建议至内分泌科进一步检查。血常规正常。", indicators:{ uric_acid:520, fasting_glucose:6.5, systolic_bp:138, diastolic_bp:90, total_cholesterol:5.5, bmi:25.3 } },
+  { id:9, date:"2023-03-15", hospital:"浙大二院", dept:"内分泌科", tags:["甲状腺功能","生化全套"], conclusion:"首次就诊，发现多项代谢指标异常，制定干预方案。开始饮食管理和运动处方。", indicators:{ uric_acid:535, fasting_glucose:7.0, systolic_bp:145, diastolic_bp:94, total_cholesterol:5.8, bmi:25.8 } },
+  { id:10, date:"2025-01-08", hospital:"浙大二院", dept:"心内科", tags:["心电图","血压监测"], conclusion:"血压控制良好，心电图正常。继续目前用药方案，三个月后复查。", indicators:{ uric_acid:455, fasting_glucose:5.2, systolic_bp:124, diastolic_bp:78, total_cholesterol:4.7, bmi:23.9 } },
+  { id:11, date:"2024-09-25", hospital:"浙江省中医院", dept:"中医内科", tags:["中医体质辨识"], conclusion:"体质偏湿热，建议薏仁、赤小豆等祛湿食疗。配合穴位按摩辅助降尿酸。", indicators:{ uric_acid:460, fasting_glucose:5.7, systolic_bp:130, diastolic_bp:82, total_cholesterol:5.1, bmi:24.2 } },
+  { id:12, date:"2024-06-10", hospital:"浙大二院", dept:"内分泌科", tags:["生化全套","糖化血红蛋白"], conclusion:"糖化血红蛋白5.8%，控制达标。尿酸仍偏高，加用非布司他。", indicators:{ uric_acid:475, fasting_glucose:5.6, systolic_bp:126, diastolic_bp:80, total_cholesterol:4.8, bmi:24.0 } },
+  { id:13, date:"2024-03-20", hospital:"杭州市第一人民医院", dept:"营养科", tags:["营养评估"], conclusion:"BMI略有下降，饮食结构调整效果初显。继续执行地中海饮食方案。", indicators:{ uric_acid:430, fasting_glucose:5.4, systolic_bp:120, diastolic_bp:76, total_cholesterol:4.6, bmi:23.6 } },
+  { id:14, date:"2023-11-08", hospital:"浙大二院", dept:"内分泌科", tags:["生化全套","甲状腺功能"], conclusion:"较上次有明显改善，血糖接近正常上限，继续药物+生活方式干预。", indicators:{ uric_acid:450, fasting_glucose:6.1, systolic_bp:134, diastolic_bp:86, total_cholesterol:5.2, bmi:24.6 } },
+  { id:15, date:"2023-07-28", hospital:"浙江省人民医院", dept:"体检中心", tags:["半年复查"], conclusion:"各项指标较年初有所改善，干预方案有效。需继续保持。", indicators:{ uric_acid:480, fasting_glucose:6.4, systolic_bp:135, diastolic_bp:87, total_cholesterol:5.4, bmi:25.1 } },
+  { id:16, date:"2025-03-01", hospital:"浙大二院", dept:"内分泌科", tags:["生化全套","血常规"], conclusion:"最近一次检查，尿酸已降至正常范围边缘，血糖稳定。BMI达标，整体向好。", indicators:{ uric_acid:425, fasting_glucose:5.1, systolic_bp:118, diastolic_bp:74, total_cholesterol:4.5, bmi:23.4 } },
+];
+
+// Generate indicator timeline series from visits
+const MOCK_TIMELINE = {};
+Object.keys(INDICATORS).forEach(key => {
+  MOCK_TIMELINE[key] = MOCK_VISITS
+    .map(v => ({ x: new Date(v.date).getTime(), y: v.indicators[key] }))
+    .sort((a, b) => a.x - b.x);
+});
+
+let currentIndicator = "uric_acid";
 
 /* ===== AUTH HELPERS ===== */
 function authHeaders() { return { "Authorization": "Bearer " + authToken }; }
@@ -610,7 +909,11 @@ function doLogout() {
 
 /* ===== INIT ===== */
 async function init() {
-  if (!authToken) { document.getElementById("loginPage").style.display = "flex"; return; }
+  if (!authToken) {
+    // Demo mode: skip login and load mock data
+    initDemo();
+    return;
+  }
   // Verify token
   try {
     const res = await fetch("/api/auth/me", { headers: authHeaders() });
@@ -618,7 +921,7 @@ async function init() {
     currentUser = await res.json();
     document.getElementById("loginPage").style.display = "none";
     initApp();
-  } catch (e) { doLogout(); }
+  } catch (e) { initDemo(); }
 }
 
 async function initApp() {
@@ -629,8 +932,12 @@ async function initApp() {
   relations = await relRes.json();
   members = await memRes.json();
 
+  // Seed demo data if needed (creates health indicators for new users)
+  authFetch("/api/seed-demo-data", { method: "POST" }).catch(() => {});
+
   renderCategoryNav();
-  renderMemberStrip();
+  renderHomeMemberStrip();
+  renderHomeCategoryNav();
   renderMemberManageList();
   loadRecords();
   updateProfileDisplay();
@@ -639,7 +946,7 @@ async function initApp() {
   const lastMember = localStorage.getItem("lastMemberId");
   if (lastMember && members.find(m => m.id === lastMember)) {
     currentMemberFilter = lastMember;
-    renderMemberStrip();
+    renderHomeMemberStrip();
     loadRecords();
   }
 }
@@ -649,37 +956,33 @@ function switchTab(tab) {
   currentTab = tab;
   document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
   document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
-  const pageMap = { home: "pageHome", camera: "pageCamera", profile: "pageProfile" };
-  document.getElementById(pageMap[tab]).classList.add("active");
-  document.querySelector(`.nav-item[data-tab="${tab}"]`).classList.add("active");
+  const pageMap = { home: "pageHome", trends: "pageTrends", timeline: "pageTimeline", profile: "pageProfile", camera: "pageCamera" };
+  const pageId = pageMap[tab];
+  if (pageId) document.getElementById(pageId).classList.add("active");
+  const navBtn = document.querySelector(`.nav-item[data-tab="${tab}"]`);
+  if (navBtn) navBtn.classList.add("active");
 
   if (tab === "camera") { resetCamera(); renderUploadMemberSelect(); }
   if (tab === "profile") { refreshMembers(); updateProfileDisplay(); }
-  if (tab === "home") { loadRecords(); }
+  if (tab === "home") { loadRecords(); renderHomeMemberStrip(); renderHomeCategoryNav(); }
+  if (tab === "trends") {
+    // Clear caches so fresh data is fetched
+    _indicatorsAllCache = null;
+    _indicatorSeriesCache = {};
+    renderIndicatorFilter();
+    renderTrendChart();
+    renderIndicatorSummary();
+    renderAbnormalList();
+  }
+  if (tab === "timeline") { renderTimeline(); }
 }
 
 /* ===== MEMBERS ===== */
-function renderMemberStrip() {
-  const el = document.getElementById("memberStrip");
-  let html = '';
-  // "All" chip
-  html += `<div class="member-chip ${!currentMemberFilter ? 'active' : ''}" onclick="filterMember('')">
-    <div class="member-avatar" style="background:#94a3b8;">全</div>
-    <span class="member-chip-name">全部</span></div>`;
-  members.forEach(m => {
-    const initial = m.name.charAt(0);
-    html += `<div class="member-chip ${currentMemberFilter === m.id ? 'active' : ''}" onclick="filterMember('${m.id}')">
-      <div class="member-avatar" style="background:${m.avatar_color}">${esc(initial)}</div>
-      <span class="member-chip-name">${esc(m.name)}</span></div>`;
-  });
-  el.innerHTML = html;
-}
-
 function filterMember(id) {
   currentMemberFilter = id;
   if (id) localStorage.setItem("lastMemberId", id);
   else localStorage.removeItem("lastMemberId");
-  renderMemberStrip();
+  renderHomeMemberStrip();
   loadRecords();
 }
 
@@ -706,7 +1009,7 @@ function renderMemberManageList() {
 async function refreshMembers() {
   const res = await authFetch("/api/members");
   members = await res.json();
-  renderMemberStrip();
+  renderHomeMemberStrip();
   renderMemberManageList();
 }
 
@@ -808,32 +1111,124 @@ function filterCategory(btn, cat) {
 
 /* ===== RECORDS ===== */
 async function loadRecords() {
+  const el = document.getElementById("homeRecordList");
+
+  // Demo mode: render mock data
+  if (!authToken) {
+    loadRecordsDemo();
+    return;
+  }
+
   let url = "/api/records?size=50";
   if (currentCategory) url += `&category=${currentCategory}`;
   if (currentMemberFilter) url += `&member_id=${currentMemberFilter}`;
   const res = await authFetch(url);
   const data = await res.json();
-  const el = document.getElementById("recordsList");
 
   if (!data.items.length) {
-    el.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div>
-      <p>还没有健康记录</p><p class="sub">点击底部「拍照」按钮添加第一条记录</p></div>`;
+    el.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><div class="empty-icon">📋</div>
+      <p>还没有健康记录</p><p class="sub">点击下方按钮添加第一条记录</p></div>`;
     return;
   }
 
   let html = '';
   data.items.forEach(r => {
-    const date = r.created_at ? new Date(r.created_at).toLocaleDateString("zh-CN") : "";
+    const date = r.created_at ? new Date(r.created_at).toLocaleDateString("MM/DD") : "";
+    const member = members.find(m => m.id === r.member_id);
+    const memberColor = member ? member.avatar_color : "#94a3b8";
     const ocrClass = r.ocr_status === "done" ? "done" : (r.ocr_status === "pending" || r.ocr_status === "processing") ? "pending" : r.ocr_status === "failed" ? "failed" : "";
     html += `<div class="record-card" onclick="viewRecord('${r.id}')">
-      <img class="record-thumb" src="/api/records/${r.id}/thumb?token=${encodeURIComponent(authToken)}" loading="lazy">
-      <div class="record-body">
+      <div class="record-thumb-wrap">
+        <img class="record-thumb" src="/api/records/${r.id}/thumb?token=${encodeURIComponent(authToken)}" loading="lazy">
+        <span class="record-card-badge">${date}</span>
+      </div>
+      <div class="record-card-body">
         <div class="record-title">${esc(r.title)}</div>
         <div class="record-meta">
           <span class="cat-tag">${esc(r.category_label)}</span>
-          ${r.member_name ? '<span>'+esc(r.member_name)+'</span>' : ''}
-          <span>${date}</span>
+          ${r.member_name ? '<span style="display:inline-flex;align-items:center;gap:3px;"><span class="member-dot" style="background:'+memberColor+'"></span>'+esc(r.member_name)+'</span>' : ''}
           ${ocrClass ? '<span class="ocr-dot '+ocrClass+'" title="OCR: '+r.ocr_status+'"></span>' : ''}
+        </div>
+      </div>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+// 档案页面的成员筛选
+function renderHomeMemberStrip() {
+  const el = document.getElementById("homeMemberStrip");
+  let html = `<button class="chip ${!currentMemberFilter ? 'active' : ''}" onclick="filterHomeByMember('')">全部</button>`;
+  members.forEach(m => {
+    html += `<button class="chip ${currentMemberFilter === m.id ? 'active' : ''}" onclick="filterHomeByMember('${m.id}')" style="--chip-color:${m.avatar_color}">${esc(m.name)}</button>`;
+  });
+  el.innerHTML = html;
+}
+
+// 档案页面的分类筛选
+function renderHomeCategoryNav() {
+  const el = document.getElementById("homeCategoryNav");
+  let html = `<button class="chip ${!currentCategory ? 'active' : ''}" onclick="filterHomeByCategory('')">全部</button>`;
+  for (const [k, v] of Object.entries(categories)) {
+    const isActive = currentCategory === k;
+    html += `<button class="chip ${isActive ? 'active' : ''}" onclick="filterHomeByCategory('${k}')">${esc(v)}</button>`;
+  }
+  el.innerHTML = html;
+}
+
+function filterHomeByMember(memberId) {
+  currentMemberFilter = memberId;
+  renderHomeMemberStrip();
+  loadRecords();
+}
+
+function filterHomeByCategory(category) {
+  currentCategory = category;
+  renderHomeCategoryNav();
+  loadRecords();
+}
+
+// 首页统计
+async function updateStats() {
+  const res = await authFetch("/api/records?size=1000");
+  const data = await res.json();
+
+  document.getElementById("statTotalRecords").textContent = data.items.length;
+  document.getElementById("statMembers").textContent = members.length;
+  document.getElementById("statCategories").textContent = categories.length;
+
+  // 本月新增
+  const now = new Date();
+  const thisMonth = data.items.filter(r => {
+    const d = new Date(r.created_at);
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  }).length;
+  document.getElementById("statThisMonth").textContent = thisMonth;
+}
+
+// 首页最近记录
+async function loadRecentRecords() {
+  const res = await authFetch("/api/records?size=4");
+  const data = await res.json();
+  const el = document.getElementById("recentRecordsList");
+
+  if (!data.items.length) {
+    el.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><p>暂无记录</p></div>`;
+    return;
+  }
+
+  let html = '';
+  data.items.slice(0, 4).forEach(r => {
+    const date = r.created_at ? new Date(r.created_at).toLocaleDateString("MM/DD") : "";
+    const member = members.find(m => m.id === r.member_id);
+    const memberColor = member ? member.avatar_color : "#94a3b8";
+    html += `<div class="recent-card" onclick="viewRecord('${r.id}')">
+      <img class="recent-thumb" src="/api/records/${r.id}/thumb?token=${encodeURIComponent(authToken)}">
+      <div class="recent-info">
+        <div class="recent-title">${esc(r.title)}</div>
+        <div class="recent-meta">
+          <span>${date}</span>
+          <span style="display:inline-flex;align-items:center;gap:3px;"><span class="member-dot" style="background:${memberColor}"></span>${esc(r.member_name || '未指定')}</span>
         </div>
       </div>
     </div>`;
@@ -984,6 +1379,17 @@ async function viewRecord(id) {
   document.getElementById("viewerMeta").textContent = meta;
   document.getElementById("viewerDeleteBtn").onclick = () => deleteRecord(id);
 
+  // Load structured report data
+  let hasReport = false;
+  try {
+    const sres = await authFetch(`/api/records/${id}/structured`);
+    const sr = await sres.json();
+    if (sr.metrics && sr.metrics.length > 0) {
+      hasReport = true;
+      renderStructuredReport(sr);
+    }
+  } catch (e) { /* no structured data */ }
+
   // OCR text
   const textEl = document.getElementById("ocrTextContent");
   if (r.ocr_status === "done" && r.ocr_text) {
@@ -1022,14 +1428,19 @@ async function viewRecord(id) {
   document.getElementById("viewerReocrBtn").style.display =
     (r.ocr_status === "failed" || r.ocr_status === "done" || r.ocr_status === "disabled") ? "" : "none";
 
-  // Reset to image tab
-  switchViewerTab(document.querySelector(".vtab"), "image");
+  // Default tab: show report if available, else image
+  if (hasReport) {
+    switchViewerTab(document.querySelector('.vtab[data-vtab="report"]'), "report");
+  } else {
+    switchViewerTab(document.querySelector(".vtab"), "image");
+  }
   document.getElementById("viewerModal").style.display = "flex";
 }
 
 function switchViewerTab(btn, tab) {
   document.querySelectorAll(".vtab").forEach(b => b.classList.remove("active"));
   btn.classList.add("active");
+  document.getElementById("viewerBodyReport").style.display = tab === "report" ? "flex" : "none";
   document.getElementById("viewerBodyImage").style.display = tab === "image" ? "flex" : "none";
   document.getElementById("viewerBodyText").style.display = tab === "text" ? "flex" : "none";
   document.getElementById("viewerBodyTable").style.display = tab === "table" ? "flex" : "none";
@@ -1093,8 +1504,528 @@ async function editUserName() {
   } catch (e) { alert("更新失败"); }
 }
 
+/* ===== TREND DASHBOARD ===== */
+// Store API data cache
+let _indicatorsAllCache = null;
+let _indicatorSeriesCache = {};
+
+function renderIndicatorFilter() {
+  const el = document.getElementById("indicatorFilter");
+  let html = '';
+  Object.entries(INDICATORS).forEach(([key, ind]) => {
+    html += `<button class="ind-chip ${key === currentIndicator ? 'active' : ''}" data-ind="${key}" onclick="switchIndicator('${key}')">${ind.name}</button>`;
+  });
+  el.innerHTML = html;
+}
+
+function switchIndicator(key) {
+  currentIndicator = key;
+  renderIndicatorFilter();
+  renderTrendChart();
+  renderIndicatorSummary();
+  renderAbnormalList();
+}
+
+async function renderIndicatorSummary() {
+  const ind = INDICATORS[currentIndicator];
+  let latestVal, latestDate, isAbnormal, direction;
+
+  if (authToken) {
+    // Fetch from real API
+    try {
+      if (!_indicatorsAllCache) {
+        const res = await authFetch("/api/health-indicators/all");
+        _indicatorsAllCache = await res.json();
+      }
+      const data = _indicatorsAllCache[currentIndicator];
+      if (data && data.latest_value != null) {
+        latestVal = data.latest_value;
+        isAbnormal = data.is_abnormal;
+        direction = data.direction;
+      }
+    } catch (e) { /* fallback below */ }
+  }
+
+  // Fallback to mock
+  if (latestVal == null) {
+    const series = MOCK_TIMELINE[currentIndicator];
+    const latest = series[series.length - 1];
+    latestVal = latest.y;
+    isAbnormal = latestVal > ind.max || latestVal < ind.min;
+    direction = latestVal > ind.max ? "up" : (latestVal < ind.min ? "down" : "");
+  }
+
+  document.getElementById("indLatestValue").textContent = `${latestVal} ${ind.unit}`;
+  document.getElementById("indRange").textContent = `参考范围 ${ind.min}–${ind.max} ${ind.unit}`;
+
+  const summaryEl = document.getElementById("indicatorSummary");
+  const statusEl = document.getElementById("indStatus");
+  summaryEl.className = "indicator-summary" + (isAbnormal ? " abnormal" : "");
+
+  if (direction === "up") {
+    statusEl.className = "ind-status abnormal";
+    statusEl.textContent = `↑ 偏高`;
+  } else if (direction === "down") {
+    statusEl.className = "ind-status abnormal";
+    statusEl.textContent = `↓ 偏低`;
+  } else {
+    statusEl.className = "ind-status normal";
+    statusEl.textContent = "正常";
+  }
+}
+
+async function renderTrendChart() {
+  const ind = INDICATORS[currentIndicator];
+  let series;
+
+  if (authToken) {
+    // Fetch from real API
+    try {
+      const cacheKey = currentIndicator;
+      if (!_indicatorSeriesCache[cacheKey]) {
+        const res = await authFetch(`/api/health-indicators?indicator=${currentIndicator}`);
+        const data = await res.json();
+        _indicatorSeriesCache[cacheKey] = data.series.map(p => ({ x: new Date(p.x).getTime(), y: p.y }));
+      }
+      series = _indicatorSeriesCache[cacheKey];
+    } catch (e) { /* fallback below */ }
+  }
+
+  // Fallback to mock
+  if (!series) {
+    series = MOCK_TIMELINE[currentIndicator];
+  }
+
+  if (!series || !series.length) {
+    document.getElementById("trendChart").innerHTML = '<div class="empty-state" style="padding:40px 0;"><p style="font-size:14px;">暂无数据</p></div>';
+    return;
+  }
+
+  const allY = series.map(p => p.y);
+  const yMin = Math.min(ind.min, ...allY);
+  const yMax = Math.max(ind.max, ...allY);
+  const yPad = (yMax - yMin) * 0.15;
+
+  // Build marker sizes and colors
+  const markerSize = series.map(p => (p.y > ind.max || p.y < ind.min) ? 8 : 4);
+  const markerColors = series.map(p => {
+    if (p.y > ind.max) return '#dc2626';
+    if (p.y < ind.min) return '#f59e0b';
+    return ind.color;
+  });
+  const markerStrokeColors = series.map(p => {
+    if (p.y > ind.max) return '#dc2626';
+    if (p.y < ind.min) return '#f59e0b';
+    return ind.color;
+  });
+
+  const options = {
+    chart: {
+      type: 'line', height: 280,
+      toolbar: { show: true, tools: { download: true, zoom: true, zoomin: true, zoomout: true, pan: true, reset: true } },
+      zoom: { enabled: true, type: 'x' },
+      animations: { enabled: true, easing: 'easeinout', speed: 600 },
+      fontFamily: '-apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif',
+    },
+    series: [{ name: ind.name, data: series }],
+    stroke: { curve: 'smooth', width: 3 },
+    colors: [ind.color],
+    fill: {
+      type: 'gradient',
+      gradient: { shade: 'light', type: 'vertical', opacityFrom: 0.3, opacityTo: 0.05,
+                  stops: [0, 100], colorStops: [{ offset: 0, color: ind.color, opacity: 0.15 }] }
+    },
+    annotations: {
+      yaxis: [{
+        y: ind.min, y2: ind.max,
+        fillColor: '#dcfce7', opacity: 0.35,
+        borderColor: '#86efac', borderWidth: 1,
+        label: {
+          text: '正常范围', position: 'left', offsetX: 8,
+          style: { color: '#166534', background: '#dcfce7', fontSize: '11px', fontWeight: 600, padding: { left: 6, right: 6, top: 2, bottom: 2 } }
+        }
+      }]
+    },
+    markers: { size: markerSize, colors: markerColors, strokeColors: markerStrokeColors, strokeWidth: 2, hover: { size: 10 } },
+    xaxis: {
+      type: 'datetime',
+      labels: { style: { fontSize: '12px', colors: '#94a3b8' }, datetimeFormatter: { year: 'yyyy', month: 'MM/dd', day: 'MM/dd' } },
+      axisBorder: { show: false }, axisTicks: { show: false },
+    },
+    yaxis: {
+      min: yMin - yPad, max: yMax + yPad,
+      labels: { style: { fontSize: '12px', colors: '#94a3b8' }, formatter: v => v.toFixed(1) },
+    },
+    grid: { borderColor: '#f1f5f9', strokeDashArray: 4, padding: { left: 8, right: 16 } },
+    tooltip: {
+      x: { format: 'yyyy-MM-dd' },
+      y: { formatter: v => `${v} ${ind.unit}` },
+      marker: { show: true },
+    },
+    dataLabels: { enabled: false },
+  };
+
+  if (window._trendChart) window._trendChart.destroy();
+  window._trendChart = new ApexCharts(document.querySelector("#trendChart"), options);
+  window._trendChart.render();
+}
+
+async function renderAbnormalList() {
+  const ind = INDICATORS[currentIndicator];
+  const el = document.getElementById("abnormalList");
+  let abnormalItems = [];
+
+  if (authToken) {
+    try {
+      const res = await authFetch(`/api/health-indicators?indicator=${currentIndicator}`);
+      const data = await res.json();
+      abnormalItems = data.series
+        .filter(p => p.y > ind.max || p.y < ind.min)
+        .map(p => {
+          const isHigh = p.y > ind.max;
+          const diff = isHigh ? (p.y - ind.max) : (ind.min - p.y);
+          const date = p.x ? p.x.substring(0, 10) : "";
+          return { val: p.y, isHigh, diff, date, hospital: p.hospital || "", record_id: p.record_id };
+        })
+        .sort((a, b) => b.date.localeCompare(a.date));
+    } catch (e) { /* fallback below */ }
+  }
+
+  if (!abnormalItems.length && !authToken) {
+    abnormalItems = MOCK_VISITS
+      .filter(v => { const val = v.indicators[currentIndicator]; return val > ind.max || val < ind.min; })
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .map(v => {
+        const val = v.indicators[currentIndicator];
+        const isHigh = val > ind.max;
+        const diff = isHigh ? (val - ind.max) : (ind.min - val);
+        return { val, isHigh, diff, date: v.date, hospital: v.hospital, record_id: null };
+      });
+  }
+
+  if (!abnormalItems.length) {
+    el.innerHTML = `<div class="empty-state" style="padding:24px 0;"><p style="font-size:14px;">该指标无异常记录 🎉</p></div>`;
+    return;
+  }
+
+  el.innerHTML = abnormalItems.map(item => {
+    const onclick = item.record_id ? `onclick="viewRecord('${item.record_id}')"` : '';
+    return `<div class="abnormal-item" ${onclick}>
+      <div class="abnormal-dot ${item.isHigh ? 'high' : 'low'}"></div>
+      <div class="abnormal-info">
+        <div class="abnormal-label">${item.isHigh ? '↑ 偏高' : '↓ 偏低'} ${item.val} ${ind.unit}</div>
+        <div class="abnormal-detail">${item.date} · ${item.hospital} · 超出${item.diff.toFixed(1)}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ===== TIMELINE ===== */
+async function renderTimeline() {
+  const el = document.getElementById("timelineContainer");
+
+  if (authToken) {
+    try {
+      const res = await authFetch("/api/timeline");
+      const data = await res.json();
+      renderTimelineFromAPI(el, data.visits || []);
+      return;
+    } catch (e) { /* fallback below */ }
+  }
+
+  // Fallback to mock data
+  renderTimelineFromMock(el);
+}
+
+function renderTimelineFromAPI(el, visits) {
+  if (!visits.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><p>暂无就诊记录</p></div>';
+    return;
+  }
+
+  // Group by year
+  const grouped = {};
+  visits.forEach(v => {
+    const year = v.date ? v.date.substring(0, 4) : "未知";
+    if (!grouped[year]) grouped[year] = [];
+    grouped[year].push(v);
+  });
+
+  let html = '';
+  Object.keys(grouped).sort((a, b) => b - a).forEach(year => {
+    const yearVisits = grouped[year];
+    html += `<div class="timeline-group">`;
+    html += `<div class="timeline-year">${year}<span class="year-count">${yearVisits.length} 次记录</span></div>`;
+    yearVisits.forEach(v => {
+      const d = new Date(v.date);
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const hasAlert = v.abnormalities && v.abnormalities.length > 0;
+      const tags = v.tags || [];
+      const onclick = v.record_id ? `onclick="viewRecord('${v.record_id}')"` : '';
+
+      html += `<div class="timeline-item" ${onclick}>
+        <div class="timeline-date-col">
+          <div class="month">${month}月</div>
+          <div class="day">${day}</div>
+        </div>
+        <div class="timeline-node ${hasAlert ? 'has-alert' : ''}"></div>
+        <div class="timeline-card">
+          <div class="timeline-card-hospital">${esc(v.hospital || '健康记录')}${v.department ? ' · ' + esc(v.department) : ''}</div>
+          <div class="timeline-card-tags">
+            ${tags.map(t => `<span class="timeline-tag">${esc(t)}</span>`).join('')}
+          </div>
+          ${hasAlert ? v.abnormalities.map(a => `<span class="timeline-alert">⚠️ ${esc(a)}</span>`).join('') : ''}
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+
+  el.innerHTML = html;
+}
+
+function renderTimelineFromMock(el) {
+  const grouped = {};
+  MOCK_VISITS.sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(v => {
+    const year = v.date.substring(0, 4);
+    if (!grouped[year]) grouped[year] = [];
+    grouped[year].push(v);
+  });
+
+  let html = '';
+  Object.keys(grouped).sort((a, b) => b - a).forEach(year => {
+    const visits = grouped[year];
+    html += `<div class="timeline-group">`;
+    html += `<div class="timeline-year">${year}<span class="year-count">${visits.length} 次就诊</span></div>`;
+    visits.forEach(v => {
+      const d = new Date(v.date);
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const hasAlert = computeAbnormalities(v).length > 0;
+      const alerts = computeAbnormalities(v);
+
+      html += `<div class="timeline-item" onclick="viewVisitReport(${v.id})">
+        <div class="timeline-date-col">
+          <div class="month">${month}月</div>
+          <div class="day">${day}</div>
+        </div>
+        <div class="timeline-node ${hasAlert ? 'has-alert' : ''}"></div>
+        <div class="timeline-card">
+          <div class="timeline-card-hospital">${esc(v.hospital)} · ${esc(v.dept)}</div>
+          <div class="timeline-card-tags">
+            ${v.tags.map(t => `<span class="timeline-tag">${esc(t)}</span>`).join('')}
+          </div>
+          ${alerts.length ? alerts.map(a => `<span class="timeline-alert">⚠️ ${esc(a)}</span>`).join('') : ''}
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+
+  if (!html) html = '<div class="empty-state"><div class="empty-icon">📋</div><p>暂无就诊记录</p></div>';
+  el.innerHTML = html;
+}
+
+function computeAbnormalities(visit) {
+  const result = [];
+  Object.entries(INDICATORS).forEach(([key, ind]) => {
+    const val = visit.indicators[key];
+    if (val > ind.max) result.push(`${ind.name}偏高 ${val}`);
+    else if (val < ind.min) result.push(`${ind.name}偏低 ${val}`);
+  });
+  return result;
+}
+
+/* ===== STRUCTURED REPORT RENDERER ===== */
+function renderStructuredReport(data) {
+  const reportBody = document.getElementById("viewerBodyReport");
+  let html = `<div class="report-section">`;
+
+  // Conclusion section
+  if (data.conclusion) {
+    html += `<div class="report-conclusion">
+      <div class="conclusion-label">医生结论 / AI 总结</div>
+      ${esc(data.conclusion)}
+    </div>`;
+  }
+
+  // Metrics section
+  if (data.metrics && data.metrics.length > 0) {
+    html += `<div class="metric-section-title">📊 检查指标</div><div class="metric-list">`;
+    data.metrics.forEach(m => {
+      const arrow = m.direction === "up" ? '<span class="metric-arrow" style="color:var(--danger);">↑</span>' :
+                    m.direction === "down" ? '<span class="metric-arrow" style="color:#f59e0b;">↓</span>' : '';
+      html += `<div class="metric-item">
+        <div class="metric-name">${esc(m.name)}</div>
+        <div class="metric-value-group">
+          <div class="metric-value ${m.is_abnormal ? 'abnormal' : ''}">${arrow} ${m.value} ${esc(m.unit)}</div>
+          <div class="metric-range">${m.normal_min != null ? m.normal_min : ''}–${m.normal_max != null ? m.normal_max : ''}</div>
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  // Original document thumbnail
+  if (data.id) {
+    html += `<div class="report-thumb-section">
+      <div class="thumb-label">原件归档</div>
+      <img src="/api/records/${data.id}/thumb?token=${encodeURIComponent(authToken)}" onclick="showFullscreenImage('/api/records/${data.id}/image?token=${encodeURIComponent(authToken)}')">
+    </div>`;
+  }
+
+  html += `</div>`;
+  reportBody.innerHTML = html;
+}
+
+/* ===== REPORT DETAIL VIEWER (Mock) ===== */
+function viewVisitReport(visitId) {
+  const visit = MOCK_VISITS.find(v => v.id === visitId);
+  if (!visit) return;
+
+  currentViewId = visitId;
+  document.getElementById("viewerTitle").textContent = visit.hospital + ' · ' + visit.dept;
+
+  // Build report tab content
+  const reportBody = document.getElementById("viewerBodyReport");
+  const abnormalities = computeAbnormalities(visit);
+
+  let html = `<div class="report-section">`;
+  // Conclusion section
+  html += `<div class="report-conclusion">
+    <div class="conclusion-label">医生结论 / AI 总结</div>
+    ${esc(visit.conclusion)}
+  </div>`;
+
+  // Metrics section
+  html += `<div class="metric-section-title">📊 检查指标</div><div class="metric-list">`;
+  Object.entries(INDICATORS).forEach(([key, ind]) => {
+    const val = visit.indicators[key];
+    const isAbnormal = val > ind.max || val < ind.min;
+    const arrow = val > ind.max ? '<span class="metric-arrow" style="color:var(--danger);">↑</span>' :
+                  val < ind.min ? '<span class="metric-arrow" style="color:#f59e0b;">↓</span>' : '';
+    html += `<div class="metric-item">
+      <div class="metric-name">${ind.name}</div>
+      <div class="metric-value-group">
+        <div class="metric-value ${isAbnormal ? 'abnormal' : ''}">${arrow} ${val} ${ind.unit}</div>
+        <div class="metric-range">${ind.min}–${ind.max}</div>
+      </div>
+    </div>`;
+  });
+  html += `</div>`;
+
+  // Thumbnail section
+  html += `<div class="report-thumb-section">
+    <div class="thumb-label">原件归档</div>
+    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' fill='%23f1f5f9'%3E%3Crect width='400' height='300' rx='12'/%3E%3Ctext x='200' y='140' text-anchor='middle' fill='%2394a3b8' font-size='16'%3E化验单原件%3C/text%3E%3Ctext x='200' y='165' text-anchor='middle' fill='%2394a3b8' font-size='13'%3E${visit.date}%3C/text%3E%3C/svg%3E" onclick="showFullscreenImage(this.src)">
+  </div>`;
+  html += `</div>`;
+  reportBody.innerHTML = html;
+
+  // Meta info
+  let meta = visit.tags.join(' · ');
+  meta += ` · ${visit.date}`;
+  document.getElementById("viewerMeta").textContent = meta;
+
+  // Show viewer with report tab active
+  switchViewerTab(document.querySelector('.vtab[data-vtab="report"]'), "report");
+  document.getElementById("viewerModal").style.display = "flex";
+}
+
+function showFullscreenImage(src) {
+  // Simple fullscreen image view
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:400;background:rgba(0,0,0,0.9);display:flex;align-items:center;justify-content:center;cursor:pointer;';
+  overlay.innerHTML = `<img src="${src}" style="max-width:95%;max-height:95%;object-fit:contain;border-radius:8px;">`;
+  overlay.onclick = () => overlay.remove();
+  document.body.appendChild(overlay);
+}
+
 /* ===== UTILS ===== */
 function esc(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+
+// Demo mode: skip login
+function initDemo() {
+  document.getElementById("loginPage").style.display = "none";
+  currentUser = { phone: "138****8888", name: "演示用户" };
+  members = [
+    { id: "m1", name: "我自己", relation: "self", relation_label: "本人", avatar_color: "#2563eb", record_count: 16, is_default: true },
+    { id: "m2", name: "妈妈", relation: "mother", relation_label: "母亲", avatar_color: "#dc2626", record_count: 8, is_default: false },
+  ];
+  categories = { blood_test: "血常规", biochemistry: "生化全套", imaging: "影像检查", other: "其他" };
+  relations = { self: "本人", spouse: "配偶", father: "父亲", mother: "母亲", child: "子女", other: "其他" };
+
+  renderIndicatorFilter();
+  renderTrendChart();
+  renderIndicatorSummary();
+  renderAbnormalList();
+  renderTimeline();
+  renderCategoryNav();
+  renderHomeMemberStrip();
+  renderHomeCategoryNav();
+  renderMemberManageList();
+  updateProfileDisplay();
+  loadRecords();
+  loadRecentRecordsDemo();
+}
+
+function loadRecordsDemo() {
+  const el = document.getElementById("homeRecordList");
+  let visits = MOCK_VISITS.filter(v => {
+    // Filter by member (for demo, treat all as "m1")
+    if (currentMemberFilter && currentMemberFilter !== "m1") return false;
+    // Filter by category (map tags to categories)
+    if (currentCategory) {
+      const catMap = { blood_test: "血常规", biochemistry: "生化全套", imaging: "影像检查" };
+      if (!v.tags.some(t => t.includes(catMap[currentCategory] || "___"))) return false;
+    }
+    return true;
+  }).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  if (!visits.length) {
+    el.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><div class="empty-icon">📋</div>
+      <p>还没有健康记录</p><p class="sub">点击下方按钮添加第一条记录</p></div>`;
+    return;
+  }
+
+  el.innerHTML = visits.map(v => {
+    const abnormal = computeAbnormalities(v);
+    return `<div class="record-card" onclick="viewVisitReport(${v.id})">
+      <div class="record-thumb-wrap">
+        <div style="position:absolute;top:0;left:0;width:100%;height:100%;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:32px;">${abnormal.length ? '⚠️' : '📋'}</div>
+        <span class="record-card-badge">${v.date.slice(5)}</span>
+      </div>
+      <div class="record-card-body">
+        <div class="record-title">${esc(v.hospital)} · ${esc(v.dept)}</div>
+        <div class="record-meta">
+          <span class="cat-tag">${esc(v.tags[0])}</span>
+          <span style="display:inline-flex;align-items:center;gap:3px;"><span class="member-dot" style="background:#2563eb"></span>我自己</span>
+          ${abnormal.length ? `<span style="color:var(--danger);font-weight:600;">${abnormal.length}项异常</span>` : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function loadRecentRecordsDemo() {
+  const el = document.getElementById("recentRecordsList");
+  const recent = MOCK_VISITS.sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 4);
+  el.innerHTML = recent.map(v => {
+    const abnormal = computeAbnormalities(v);
+    return `<div class="recent-card" onclick="viewVisitReport(${v.id})">
+      <div style="width:56px;height:56px;border-radius:8px;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">${abnormal.length ? '⚠️' : '📋'}</div>
+      <div class="recent-info">
+        <div class="recent-title">${esc(v.hospital)} · ${esc(v.dept)}</div>
+        <div class="recent-meta">
+          <span>${v.date}</span>
+          <span>${v.tags[0]}</span>
+          ${abnormal.length ? `<span style="color:var(--danger);font-weight:600;">${abnormal.length}项异常</span>` : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
 
 init();
 </script>

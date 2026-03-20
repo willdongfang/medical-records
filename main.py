@@ -17,7 +17,7 @@ import requests as http_requests
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Query, Request, Header
 from fastapi.responses import HTMLResponse, Response, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import create_engine, Column, String, DateTime, LargeBinary, Text, Integer, func
+from sqlalchemy import create_engine, Column, String, DateTime, LargeBinary, Text, Integer, Float, Boolean, func
 from sqlalchemy.orm import declarative_base, sessionmaker
 from PIL import Image
 
@@ -99,6 +99,27 @@ class MedicalRecord(Base):
     ocr_text = Column(Text, default="")
     ocr_tables = Column(Text, default="")
     ocr_status = Column(String(20), default="pending")
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class HealthIndicator(Base):
+    """Structured health indicator extracted from medical records."""
+    __tablename__ = "health_indicators"
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, nullable=True, index=True)
+    member_id = Column(String, nullable=True, index=True)
+    record_id = Column(String, nullable=True, index=True)
+    indicator_key = Column(String(50), nullable=False, index=True)  # e.g. "uric_acid", "fasting_glucose"
+    indicator_name = Column(String(50), nullable=False)  # display name
+    value = Column(Float, nullable=False)
+    unit = Column(String(20), default="")
+    normal_min = Column(Float, nullable=True)
+    normal_max = Column(Float, nullable=True)
+    is_abnormal = Column(Boolean, default=False)
+    direction = Column(String(5), default="")  # "up" / "down" / ""
+    visit_date = Column(DateTime, nullable=True)  # date of the visit/test
+    hospital = Column(String(100), default="")
+    department = Column(String(50), default="")
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
@@ -802,6 +823,346 @@ async def reocr_record(record_id: str, authorization: Optional[str] = Header(Non
 @app.get("/api/ocr-status")
 async def ocr_config_status():
     return {"enabled": ocr_is_enabled()}
+
+
+# ==================== HEALTH INDICATORS & TIMELINE ====================
+
+# Indicator definitions (name, unit, normal range)
+INDICATOR_DEFS = {
+    "uric_acid":        {"name": "尿酸",       "unit": "μmol/L", "min": 208,   "max": 428},
+    "fasting_glucose":  {"name": "空腹血糖",   "unit": "mmol/L", "min": 3.9,   "max": 6.1},
+    "systolic_bp":      {"name": "收缩压",     "unit": "mmHg",   "min": 90,    "max": 140},
+    "diastolic_bp":     {"name": "舒张压",     "unit": "mmHg",   "min": 60,    "max": 90},
+    "total_cholesterol":{"name": "总胆固醇",   "unit": "mmol/L", "min": 2.8,   "max": 5.17},
+    "bmi":              {"name": "BMI",        "unit": "kg/m²",  "min": 18.5,  "max": 24},
+}
+
+
+@app.get("/api/health-indicators")
+async def get_health_indicators(
+    indicator: str = Query("uric_acid"),
+    member_id: str = Query(""),
+    authorization: Optional[str] = Header(None),
+):
+    """Get time-series data for a specific health indicator."""
+    user = require_user(authorization)
+    db = SessionLocal()
+    try:
+        q = db.query(HealthIndicator).filter(
+            HealthIndicator.user_id == user["id"],
+            HealthIndicator.indicator_key == indicator,
+        )
+        if member_id:
+            q = q.filter(HealthIndicator.member_id == member_id)
+        rows = q.order_by(HealthIndicator.visit_date.asc()).all()
+
+        series = []
+        for r in rows:
+            series.append({
+                "x": r.visit_date.isoformat() if r.visit_date else r.created_at.isoformat(),
+                "y": r.value,
+                "hospital": r.hospital,
+                "department": r.department,
+                "record_id": r.record_id,
+            })
+
+        ind_def = INDICATOR_DEFS.get(indicator, {})
+        return {
+            "indicator": indicator,
+            "name": ind_def.get("name", indicator),
+            "unit": ind_def.get("unit", ""),
+            "normal_min": ind_def.get("min", 0),
+            "normal_max": ind_def.get("max", 0),
+            "series": series,
+        }
+    finally:
+        db.close()
+
+
+@app.get("/api/health-indicators/all")
+async def get_all_indicators_summary(
+    member_id: str = Query(""),
+    authorization: Optional[str] = Header(None),
+):
+    """Get latest value + abnormal count for all indicators."""
+    user = require_user(authorization)
+    db = SessionLocal()
+    try:
+        result = {}
+        for key, ind_def in INDICATOR_DEFS.items():
+            q = db.query(HealthIndicator).filter(
+                HealthIndicator.user_id == user["id"],
+                HealthIndicator.indicator_key == key,
+            )
+            if member_id:
+                q = q.filter(HealthIndicator.member_id == member_id)
+            latest = q.order_by(HealthIndicator.visit_date.desc()).first()
+
+            # Count abnormal readings
+            q2 = db.query(func.count(HealthIndicator.id)).filter(
+                HealthIndicator.user_id == user["id"],
+                HealthIndicator.indicator_key == key,
+                HealthIndicator.is_abnormal == True,
+            )
+            if member_id:
+                q2 = q2.filter(HealthIndicator.member_id == member_id)
+            abnormal_count = q2.scalar() or 0
+
+            result[key] = {
+                "name": ind_def["name"],
+                "unit": ind_def["unit"],
+                "normal_min": ind_def["min"],
+                "normal_max": ind_def["max"],
+                "latest_value": latest.value if latest else None,
+                "latest_date": (latest.visit_date.isoformat() if latest and latest.visit_date else None),
+                "is_abnormal": latest.is_abnormal if latest else False,
+                "direction": latest.direction if latest else "",
+                "abnormal_count": abnormal_count,
+                "record_id": latest.record_id if latest else None,
+            }
+        return result
+    finally:
+        db.close()
+
+
+@app.get("/api/timeline")
+async def get_timeline(
+    member_id: str = Query(""),
+    authorization: Optional[str] = Header(None),
+):
+    """Get visit timeline grouped by date, with aggregated indicator data."""
+    user = require_user(authorization)
+    db = SessionLocal()
+    try:
+        # Get distinct visit events (group by visit_date + hospital)
+        q = db.query(HealthIndicator).filter(
+            HealthIndicator.user_id == user["id"],
+        )
+        if member_id:
+            q = q.filter(HealthIndicator.member_id == member_id)
+        rows = q.order_by(HealthIndicator.visit_date.desc()).all()
+
+        # Group by visit_date + hospital
+        visits_map = {}
+        for r in rows:
+            date_str = r.visit_date.strftime("%Y-%m-%d") if r.visit_date else "unknown"
+            key = f"{date_str}|{r.hospital}"
+            if key not in visits_map:
+                visits_map[key] = {
+                    "date": date_str,
+                    "hospital": r.hospital,
+                    "department": r.department,
+                    "record_id": r.record_id,
+                    "indicators": {},
+                    "abnormalities": [],
+                    "tags": set(),
+                }
+            visit = visits_map[key]
+            visit["indicators"][r.indicator_key] = {
+                "name": r.indicator_name,
+                "value": r.value,
+                "unit": r.unit,
+                "is_abnormal": r.is_abnormal,
+                "direction": r.direction,
+                "normal_min": r.normal_min,
+                "normal_max": r.normal_max,
+            }
+            if r.is_abnormal:
+                label = f"{r.indicator_name}{'偏高' if r.direction == 'up' else '偏低'} {r.value}"
+                if label not in visit["abnormalities"]:
+                    visit["abnormalities"].append(label)
+
+        # Also include records that may not have indicators (as simple timeline entries)
+        rec_q = db.query(MedicalRecord).filter(
+            MedicalRecord.user_id == user["id"],
+        )
+        if member_id:
+            rec_q = rec_q.filter(MedicalRecord.member_id == member_id)
+        recs = rec_q.order_by(MedicalRecord.created_at.desc()).limit(50).all()
+
+        for rec in recs:
+            date_str = rec.created_at.strftime("%Y-%m-%d")
+            key = f"{date_str}|{rec.title}"
+            if key not in visits_map:
+                visits_map[key] = {
+                    "date": date_str,
+                    "hospital": rec.title or "健康记录",
+                    "department": "",
+                    "record_id": rec.id,
+                    "indicators": {},
+                    "abnormalities": [],
+                    "tags": [CATEGORIES.get(rec.category, rec.category)],
+                }
+
+        # Sort by date desc
+        visits = sorted(visits_map.values(), key=lambda v: v["date"], reverse=True)
+
+        # Convert tags set to list
+        for v in visits:
+            if isinstance(v["tags"], set):
+                v["tags"] = list(v["tags"])
+
+        return {"visits": visits}
+    finally:
+        db.close()
+
+
+@app.get("/api/records/{record_id}/structured")
+async def get_record_structured(
+    record_id: str,
+    authorization: Optional[str] = Header(None),
+):
+    """Get structured indicator data for a specific record."""
+    user = require_user(authorization)
+    db = SessionLocal()
+    try:
+        record = db.query(MedicalRecord).filter(
+            MedicalRecord.id == record_id,
+            MedicalRecord.user_id == user["id"],
+        ).first()
+        if not record:
+            raise HTTPException(404, "记录不存在")
+
+        indicators = db.query(HealthIndicator).filter(
+            HealthIndicator.record_id == record_id,
+        ).order_by(HealthIndicator.indicator_name.asc()).all()
+
+        metrics = []
+        for ind in indicators:
+            metrics.append({
+                "key": ind.indicator_key,
+                "name": ind.indicator_name,
+                "value": ind.value,
+                "unit": ind.unit,
+                "normal_min": ind.normal_min,
+                "normal_max": ind.normal_max,
+                "is_abnormal": ind.is_abnormal,
+                "direction": ind.direction,
+            })
+
+        # Get member name
+        member_name = ""
+        if record.member_id:
+            member = db.query(Member).filter(Member.id == record.member_id).first()
+            if member:
+                member_name = member.name
+
+        return {
+            "id": record.id,
+            "title": record.title,
+            "category": record.category,
+            "category_label": CATEGORIES.get(record.category, record.category),
+            "member_id": record.member_id,
+            "member_name": member_name,
+            "note": record.note,
+            "ocr_text": record.ocr_text,
+            "ocr_tables": json.loads(record.ocr_tables) if record.ocr_tables else [],
+            "ocr_status": record.ocr_status,
+            "created_at": record.created_at.isoformat() if record.created_at else "",
+            "metrics": metrics,
+            "conclusion": "",  # Could be enhanced with AI summary
+        }
+    finally:
+        db.close()
+
+
+# --- Demo Data Seeder ---
+
+DEMO_VISITS = [
+    {"date": "2025-03-01", "hospital": "浙大二院", "dept": "内分泌科", "tags": ["生化全套", "血常规"],
+     "conclusion": "最近一次检查，尿酸已降至正常范围边缘，血糖稳定。BMI达标，整体向好。",
+     "indicators": {"uric_acid": 425, "fasting_glucose": 5.1, "systolic_bp": 118, "diastolic_bp": 74, "total_cholesterol": 4.5, "bmi": 23.4}},
+    {"date": "2025-02-15", "hospital": "浙大二院", "dept": "内分泌科", "tags": ["血常规", "生化全套"],
+     "conclusion": "患者尿酸持续偏高，建议控制高嘌呤饮食，多饮水。BMI略超标，建议增加运动量。",
+     "indicators": {"uric_acid": 482, "fasting_glucose": 5.6, "systolic_bp": 128, "diastolic_bp": 82, "total_cholesterol": 4.9, "bmi": 24.3}},
+    {"date": "2025-01-08", "hospital": "浙大二院", "dept": "心内科", "tags": ["心电图", "血压监测"],
+     "conclusion": "血压控制良好，心电图正常。继续目前用药方案，三个月后复查。",
+     "indicators": {"uric_acid": 455, "fasting_glucose": 5.2, "systolic_bp": 124, "diastolic_bp": 78, "total_cholesterol": 4.7, "bmi": 23.9}},
+    {"date": "2024-11-20", "hospital": "浙江省人民医院", "dept": "体检中心", "tags": ["年度体检"],
+     "conclusion": "整体健康状况良好，胆固醇偏高，建议低脂饮食。血压正常，心肺功能正常。",
+     "indicators": {"uric_acid": 410, "fasting_glucose": 5.3, "systolic_bp": 122, "diastolic_bp": 78, "total_cholesterol": 5.4, "bmi": 23.8}},
+    {"date": "2024-09-25", "hospital": "浙江省中医院", "dept": "中医内科", "tags": ["中医体质辨识"],
+     "conclusion": "体质偏湿热，建议薏仁、赤小豆等祛湿食疗。配合穴位按摩辅助降尿酸。",
+     "indicators": {"uric_acid": 460, "fasting_glucose": 5.7, "systolic_bp": 130, "diastolic_bp": 82, "total_cholesterol": 5.1, "bmi": 24.2}},
+    {"date": "2024-08-10", "hospital": "浙大二院", "dept": "内分泌科", "tags": ["生化全套"],
+     "conclusion": "尿酸较上次有所下降，继续保持饮食控制。血糖指标正常。",
+     "indicators": {"uric_acid": 445, "fasting_glucose": 5.5, "systolic_bp": 126, "diastolic_bp": 80, "total_cholesterol": 5.0, "bmi": 24.1}},
+    {"date": "2024-06-10", "hospital": "浙大二院", "dept": "内分泌科", "tags": ["生化全套", "糖化血红蛋白"],
+     "conclusion": "糖化血红蛋白5.8%，控制达标。尿酸仍偏高，加用非布司他。",
+     "indicators": {"uric_acid": 475, "fasting_glucose": 5.6, "systolic_bp": 126, "diastolic_bp": 80, "total_cholesterol": 4.8, "bmi": 24.0}},
+    {"date": "2024-05-18", "hospital": "杭州市第一人民医院", "dept": "全科", "tags": ["血常规", "尿常规"],
+     "conclusion": "血常规各项指标正常，尿常规未见异常。建议半年后复查生化全套。",
+     "indicators": {"uric_acid": 438, "fasting_glucose": 5.8, "systolic_bp": 130, "diastolic_bp": 84, "total_cholesterol": 5.1, "bmi": 24.5}},
+    {"date": "2024-03-20", "hospital": "杭州市第一人民医院", "dept": "营养科", "tags": ["营养评估"],
+     "conclusion": "BMI略有下降，饮食结构调整效果初显。继续执行地中海饮食方案。",
+     "indicators": {"uric_acid": 430, "fasting_glucose": 5.4, "systolic_bp": 120, "diastolic_bp": 76, "total_cholesterol": 4.6, "bmi": 23.6}},
+    {"date": "2024-02-22", "hospital": "浙大二院", "dept": "内分泌科", "tags": ["生化全套", "甲状腺功能"],
+     "conclusion": "尿酸偏高，甲状腺功能正常。需注意饮食控制，减少海鲜和动物内脏摄入。",
+     "indicators": {"uric_acid": 510, "fasting_glucose": 5.4, "systolic_bp": 132, "diastolic_bp": 86, "total_cholesterol": 5.2, "bmi": 24.8}},
+    {"date": "2023-12-05", "hospital": "浙江省人民医院", "dept": "体检中心", "tags": ["年度体检"],
+     "conclusion": "较去年体检结果，BMI有所上升，建议减重。血脂偏高，需注意。",
+     "indicators": {"uric_acid": 468, "fasting_glucose": 6.3, "systolic_bp": 142, "diastolic_bp": 92, "total_cholesterol": 5.6, "bmi": 25.2}},
+    {"date": "2023-09-12", "hospital": "浙大二院", "dept": "内分泌科", "tags": ["生化全套"],
+     "conclusion": "血糖偏高，处于糖尿病前期，需严格控制碳水摄入并增加运动。",
+     "indicators": {"uric_acid": 495, "fasting_glucose": 6.8, "systolic_bp": 136, "diastolic_bp": 88, "total_cholesterol": 5.3, "bmi": 25.0}},
+    {"date": "2023-06-20", "hospital": "杭州市第一人民医院", "dept": "全科", "tags": ["血常规", "生化全套"],
+     "conclusion": "多项指标异常，建议至内分泌科进一步检查。",
+     "indicators": {"uric_acid": 520, "fasting_glucose": 6.5, "systolic_bp": 138, "diastolic_bp": 90, "total_cholesterol": 5.5, "bmi": 25.3}},
+    {"date": "2023-03-15", "hospital": "浙大二院", "dept": "内分泌科", "tags": ["甲状腺功能", "生化全套"],
+     "conclusion": "首次就诊，发现多项代谢指标异常，制定干预方案。",
+     "indicators": {"uric_acid": 535, "fasting_glucose": 7.0, "systolic_bp": 145, "diastolic_bp": 94, "total_cholesterol": 5.8, "bmi": 25.8}},
+]
+
+
+@app.post("/api/seed-demo-data")
+async def seed_demo_data(authorization: Optional[str] = Header(None)):
+    """Seed demo health indicator data for the current user."""
+    user = require_user(authorization)
+    db = SessionLocal()
+    try:
+        # Check if user already has indicators
+        existing = db.query(HealthIndicator).filter(
+            HealthIndicator.user_id == user["id"]
+        ).count()
+        if existing > 0:
+            return {"message": "已有演示数据", "count": existing}
+
+        # Get user's default member
+        default_member = db.query(Member).filter(
+            Member.user_id == user["id"],
+            Member.is_default == 1,
+        ).first()
+        member_id = default_member.id if default_member else ""
+
+        count = 0
+        for visit in DEMO_VISITS:
+            visit_date = datetime.fromisoformat(visit["date"])
+            for key, val in visit["indicators"].items():
+                ind_def = INDICATOR_DEFS.get(key, {})
+                is_abnormal = val > ind_def.get("max", 999) or val < ind_def.get("min", 0)
+                direction = "up" if val > ind_def.get("max", 999) else ("down" if val < ind_def.get("min", 0) else "")
+                hi = HealthIndicator(
+                    user_id=user["id"],
+                    member_id=member_id,
+                    record_id="",
+                    indicator_key=key,
+                    indicator_name=ind_def.get("name", key),
+                    value=float(val),
+                    unit=ind_def.get("unit", ""),
+                    normal_min=ind_def.get("min"),
+                    normal_max=ind_def.get("max"),
+                    is_abnormal=is_abnormal,
+                    direction=direction,
+                    visit_date=visit_date,
+                    hospital=visit["hospital"],
+                    department=visit["dept"],
+                )
+                db.add(hi)
+                count += 1
+        db.commit()
+        return {"message": "演示数据创建成功", "count": count}
+    finally:
+        db.close()
 
 
 # ==================== ADMIN ENDPOINTS ====================
