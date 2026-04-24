@@ -1,0 +1,30 @@
+name: 自动部署到腾讯云CloudBase
+
+on:
+  push:
+    branches: [ main ] # 如果你的主分支叫 master，请改为 [ master ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v3
+
+      # 如果你的项目需要安装依赖并构建（例如Vue、React项目），请取消下面4行的注释
+      # - name: 安装Node.js
+      #   uses: actions/setup-node@v3
+      #   with:
+      #     node-version: '18'
+      # - name: 安装依赖并构建
+      #   run: |
+      #     npm install
+      #     npm run build
+
+      - name: 部署到CloudBase
+        uses: TencentCloudBase/cloudbase-action@v2
+        with:
+          secretId: ${{ secrets.TENCENT_SECRET_ID }}
+          secretKey: ${{ secrets.TENCENT_SECRET_KEY }}
+          envId: ${{ secrets.TENCENT_ENV_ID }}
+          # staticSrcPath: ./dist # 如果上一步执行了构建，产物通常在dist或build目录，请取消注释并修改为你的目录名
